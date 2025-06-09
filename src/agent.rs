@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use enum_dispatch::enum_dispatch;
+use itertools::Itertools;
 use rand::SeedableRng;
-use rand::rngs::{OsRng, StdRng};
+use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
 use crate::actions::Action;
 use crate::goods::Good;
+use crate::stock::Stock;
 use crate::{Int, UInt};
 
 #[enum_dispatch]
@@ -14,25 +16,29 @@ pub trait Agent {
     fn get_id(&self) -> Int;
     fn get_name(&self) -> &str;
     /// The stock of goods currently held by the agent.
-    fn stock(&self) -> &HashMap<Good, Int>;
+    fn stock(&self) -> &Stock;
     /// The marginal productivity of the agent, given their current stock.
-    fn productivity(&self, good: Good) -> Int;
+    fn productivity(&self, good: Good) -> UInt;
     /// The agent's choice of action in the next time step.
-    fn choose_action(&self) -> Action;
+    fn choose_action(&mut self) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
-    fn consume(&mut self) -> bool;
+    fn consume(&mut self, nutritional_units: UInt) -> bool;
     /// Get the complete history of agent actions.
     fn history(&self) -> Vec<Action>;
     /// Return true if the agent is still alive.
     fn is_alive(&self) -> bool;
     /// Update
     fn act(&mut self, action: Action);
+    ///
+    fn step_forward(&mut self);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CrusoeAgent {
     id: Int,
-    stock: HashMap<Good, UInt>,
+    stock: Stock,
+    is_alive: bool,
+    action_history: Vec<Action>,
 }
 
 impl Agent for CrusoeAgent {
@@ -44,47 +50,94 @@ impl Agent for CrusoeAgent {
         "Crusoe"
     }
 
-    fn stock(&self) -> &HashMap<Good, Int> {
-        todo!()
+    fn stock(&self) -> &Stock {
+        &self.stock
     }
 
-    fn productivity(&self, good: Good) -> Int {
+    fn productivity(&self, good: Good) -> UInt {
         // TODO: make configurable.
         match good {
-            Good::Berries => 4, // 4 units per day.
+            Good::Berries {
+                remaining_lifetime: _,
+            } => 4, // 4 units per day.
         }
     }
 
-    fn choose_action(&self) -> Action {
-        Action::random(&mut StdRng::from_os_rng())
+    // TODO: consider moving teh action_history update into act method, so
+    // self can be immutable here.
+    fn choose_action(&mut self) -> Action {
+        let action = Action::random(&mut StdRng::from_os_rng());
+        self.action_history.push(action.clone());
+        return action;
     }
+
+    // TODO: initially 1 unit of nutrition required per time unit
+    // TODO: in future, make this e.g. 3 units which could be 1 berries + 2 fish.
 
     /// Consume the requisite units of food per time unit.
     /// Return false if insufficient stock was available.
-    fn consume(&mut self) -> bool {
-        // Reduce the berry stock, otherwise change the alive status to false.
-        if let Some(berries) = self.stock.get(&Good::Berries) {
-            if *berries > 0 {
-                self.stock.insert(Good::Berries, berries - 3);
-                return true;
+    fn consume(&mut self, nutritional_units: UInt) -> bool {
+        let mut outstanding_nutritional_units = nutritional_units;
+        let mut stock_change: Vec<_> = vec![];
+        while let Some((good, qty)) = self.stock.next_consumables().into_iter().next() {
+            // self.stock.remove(good, *qty);
+            // to_remove.push((good.clone(), *qty));
+            // If qty_remaining < nutritional_units, recursively call consume()
+            if *qty > outstanding_nutritional_units {
+                // return self.consume(nutritional_units - qty);
+                stock_change.push((good.clone(), outstanding_nutritional_units));
+                outstanding_nutritional_units = 0;
+                break;
             } else {
-                return false;
+                stock_change.push((good.clone(), *qty));
+                outstanding_nutritional_units -= *qty;
             }
         }
-        // If no berries are available, the agent cannot consume and is considered dead.
-        false
+
+        // Update stock
+        for (good, qty) in stock_change {
+            self.stock.remove(&good, qty);
+        }
+        // Returns false if the agent dies from lack of nutrients
+        if outstanding_nutritional_units > 0 {
+            return false;
+        }
+        true
     }
 
     fn history(&self) -> Vec<Action> {
-        todo!()
+        self.action_history.clone()
     }
 
     fn is_alive(&self) -> bool {
-        todo!()
+        self.is_alive
     }
 
     fn act(&mut self, action: Action) {
-        todo!()
+        match action {
+            Action::ProduceBerries => {
+                let productivity = self.productivity(Good::Berries {
+                    remaining_lifetime: 0,
+                });
+                self.stock.add(
+                    Good::Berries {
+                        remaining_lifetime: 10,
+                    },
+                    productivity,
+                );
+            } // increase stock by `productivity` units of berries.
+            Action::Leisure => (), // do nothing
+        }
+    }
+
+    fn step_forward(&mut self) {
+        // Select action
+        let action = self.choose_action();
+        // Perform action, which updates the agent's stock
+        self.act(action);
+        // Consume stock, which updates whether the agent is alive
+        // TODO: make required nutritional_units per time unit configurable.
+        self.is_alive = self.consume(1);
     }
 }
 
