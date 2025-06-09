@@ -98,3 +98,67 @@ impl Stock {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let mut stock = Stock::default();
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            None
+        );
+        stock.add(
+            Good::Berries {
+                remaining_lifetime: 10,
+            },
+            2,
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            Some(&2)
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            None
+        );
+        stock.add(
+            Good::Berries {
+                remaining_lifetime: 10,
+            },
+            3,
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            Some(&5)
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            None
+        );
+        stock.add(
+            Good::Berries {
+                remaining_lifetime: 9,
+            },
+            1,
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            Some(&1)
+        );
+    }
+}
