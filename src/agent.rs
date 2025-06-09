@@ -41,6 +41,17 @@ pub struct CrusoeAgent {
     action_history: Vec<Action>,
 }
 
+impl CrusoeAgent {
+    pub fn new(id: Int) -> Self {
+        CrusoeAgent {
+            id,
+            stock: Stock::default(),
+            is_alive: true,
+            action_history: vec![],
+        }
+    }
+}
+
 impl Agent for CrusoeAgent {
     fn get_id(&self) -> Int {
         todo!()

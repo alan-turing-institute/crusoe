@@ -1,5 +1,5 @@
 use crate::UInt;
-use crate::agent::{Agent, AgentType};
+use crate::agent::{Agent, AgentType, CrusoeAgent};
 use crate::config::Config;
 use serde::{Deserialize, Serialize};
 use std::vec::Vec;
@@ -23,10 +23,14 @@ impl Default for Simulation {
 
 impl Simulation {
     pub fn new() -> Self {
-        Simulation::default()
+        Simulation {
+            time: 0,
+            agents: vec![AgentType::Crusoe(CrusoeAgent::new(1))], // Initialize with one Crusoe agent
+            config: Config { max_time: 100 }, // Default value, can be overridden
+        }
     }
 
-    fn step_forward(&mut self) {
+    pub fn step_forward(&mut self) {
         // Step forward each agent.
         // Per day:
         // - Start the day
@@ -60,7 +64,7 @@ impl Simulation {
     }
 
     // Trade happens in here.
-    fn after_step(&mut self) {
+    pub fn after_step(&mut self) {
         // Shuffle the vector of agents.
         // for &mut agent in self.agents().shuffle() {
         // Identify the best bilateral trade for this agent.
