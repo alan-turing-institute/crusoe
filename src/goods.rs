@@ -10,6 +10,7 @@ use crate::UInt;
 pub enum Good {
     Berries { remaining_lifetime: UInt },
     // Fish{ remaining_lifetime: UInt },
+    Basket { remaining_uses: UInt },
     // Spear{ remaining_uses: UInt },
     // Smoker{ remaining_uses: UInt },
     // Boat{ remaining_uses: UInt },
@@ -23,6 +24,7 @@ impl Good {
             Good::Berries {
                 remaining_lifetime: _,
             } => true,
+            Good::Basket { remaining_uses: _ } => false,
         }
     }
 }

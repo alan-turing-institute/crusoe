@@ -1,9 +1,12 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
+use crate::goods::Good;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Action {
     ProduceBerries,
+    ProduceBasket,
     Leisure,
 }
 

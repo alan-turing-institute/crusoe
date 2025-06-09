@@ -65,12 +65,20 @@ impl Agent for CrusoeAgent {
         &self.stock
     }
 
+    // TODO: Some capital goods take multiple time units to produce.
     fn productivity(&self, good: Good) -> UInt {
         // TODO: make configurable.
         match good {
             Good::Berries {
                 remaining_lifetime: _,
-            } => 4, // 4 units per day.
+            } => {
+                // TODO.
+                // if self.stock.contains(Good::Basket { remaining_uses: _ }) {
+                //     return 8;
+                // }
+                return 4;
+            }
+            Good::Basket { remaining_uses: _ } => 1,
         }
     }
 
@@ -136,8 +144,10 @@ impl Agent for CrusoeAgent {
                     },
                     productivity,
                 );
-            } // increase stock by `productivity` units of berries.
-            Action::Leisure => (), // do nothing
+            }
+            Action::Leisure => (),
+            // TODO.
+            Action::ProduceBasket => todo!(),
         }
     }
 

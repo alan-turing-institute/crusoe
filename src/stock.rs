@@ -50,8 +50,20 @@ impl Stock {
                         new_stock.stock.insert(new_good, *quantity);
                     } // Handle other goods similarly...
                 }
+                // Reduce remaining uses of any capital goods involved in the action.
+                Good::Basket { remaining_uses } => {
+                    if action == Action::ProduceBerries {
+                        // The action of producing berries makes use of a
+                        // basket if one is available.
+                        if *remaining_uses > 0 {
+                            let new_good = Good::Basket {
+                                remaining_uses: *remaining_uses - 1,
+                            };
+                            new_stock.stock.insert(new_good, *quantity);
+                        }
+                    }
+                }
             }
-            // TODO: Reduce remaining uses of any capital goods involved in the action.
         }
         new_stock
     }
