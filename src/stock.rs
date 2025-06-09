@@ -34,7 +34,7 @@ impl Stock {
     }
 
     /// Takes in the current action of the agent and updates the stock accordingly.
-    fn step_forward(&self, action: Action) -> Stock {
+    pub fn step_forward(&self, action: Action) -> Stock {
         let mut new_stock = Stock::default();
         // Degrade all consumer goods by 1 time unit.
         for (good, quantity) in &self.stock {
@@ -103,6 +103,7 @@ impl Stock {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{UInt, actions::Action, goods::Good};
 
     #[test]
     fn test_add() {
@@ -160,6 +161,38 @@ mod tests {
                 remaining_lifetime: 9
             }),
             Some(&1)
+        );
+    }
+
+    #[test]
+    fn test_step_forward() {
+        let mut stock = HashMap::<Good, UInt>::new();
+        stock.insert(
+            Good::Berries {
+                remaining_lifetime: 10,
+            },
+            5,
+        );
+        let stock = Stock { stock: stock };
+
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            Some(&5)
+        );
+        let stock = stock.step_forward(Action::ProduceBerries);
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            None
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            Some(&5)
         );
     }
 }
