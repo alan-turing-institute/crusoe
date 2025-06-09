@@ -200,12 +200,20 @@ mod tests {
     #[test]
     fn test_step_forward() {
         let mut stock = HashMap::<GoodsUnit, UInt>::new();
+        // Start with 5 units of berries (lifetime 10) and one basket (lifetime 5).
         stock.insert(
             GoodsUnit {
                 good: Good::Berries,
                 remaining_lifetime: 10,
             },
             5,
+        );
+        stock.insert(
+            GoodsUnit {
+                good: Good::Basket,
+                remaining_lifetime: 5,
+            },
+            1,
         );
         let stock = Stock { stock: stock };
 
@@ -216,7 +224,15 @@ mod tests {
             }),
             Some(&5)
         );
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Basket,
+                remaining_lifetime: 5
+            }),
+            Some(&1)
+        );
         let stock = stock.step_forward(Action::ProduceGood(Good::Berries));
+        // Check the berries have lost one unit of lifetime.
         assert_eq!(
             stock.stock.get(&GoodsUnit {
                 good: Good::Berries,
@@ -230,6 +246,21 @@ mod tests {
                 remaining_lifetime: 9
             }),
             Some(&5)
+        );
+        // Check the basket has been used once.
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Basket,
+                remaining_lifetime: 5
+            }),
+            None
+        );
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Basket,
+                remaining_lifetime: 4
+            }),
+            Some(&1)
         );
     }
 }
