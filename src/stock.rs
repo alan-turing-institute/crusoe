@@ -37,33 +37,48 @@ impl Stock {
         // }
     }
 
+    /// Returns true if the stock contains any units of the given good.
+    pub fn contains(&self, good: Good) -> bool {
+        for (goods_unit, _) in &self.stock {
+            if goods_unit.good == good {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Takes in the current action of the agent and updates the stock accordingly.
     pub fn step_forward(&self, action: Action) -> Stock {
         let mut new_stock = Stock::default();
         // Degrade all consumer goods by 1 time unit.
-        for (good, quantity) in &self.stock {
+        for (goods_unit, quantity) in &self.stock {
             // If the good exists in the stock and is a consumer good, degrade it.
             // If the remaining_lifetime is 0, remove it from the stock.
-            match good {
-                GoodsUnit::Berries { remaining_lifetime } => {
+            match goods_unit.good {
+                Good::Berries => {
+                    // TODO: use is_consumer_good() to do this for any consumer good.
                     // If the good is berries, degrade its remaining lifetime.
-                    if *remaining_lifetime > 0 {
-                        let new_good = GoodsUnit::Berries {
-                            remaining_lifetime: *remaining_lifetime - 1,
+                    // If the new remaining lifetime is zero, remove it from the stock.
+                    if goods_unit.remaining_lifetime > 1 {
+                        let new_good = GoodsUnit {
+                            good: Good::Berries,
+                            remaining_lifetime: goods_unit.remaining_lifetime - 1,
                         };
                         new_stock.stock.insert(new_good, *quantity);
-                    } // Handle other goods similarly...
+                    }
                 }
-                // Reduce remaining uses of any capital goods involved in the action.
-                GoodsUnit::Basket { remaining_uses } => {
+                Good::Basket => {
+                    // TODO: use !is_consumer_good() to do this for any capital good.
                     match action {
                         Action::ProduceGood(good) => {
                             if good.is_produced_using(Good::Basket) {
                                 // If the good is a basket and the action uses the basket,
                                 // degrade its remaining lifetime.
-                                if *remaining_uses > 0 {
-                                    let new_good = GoodsUnit::Basket {
-                                        remaining_uses: *remaining_uses - 1,
+                                // If the new remaining lifetime is zero, remove it from the stock.
+                                if goods_unit.remaining_lifetime > 1 {
+                                    let new_good = GoodsUnit {
+                                        good: Good::Basket,
+                                        remaining_lifetime: goods_unit.remaining_lifetime - 1,
                                     };
                                     new_stock.stock.insert(new_good, *quantity);
                                 } // Handle other goods similarly...
@@ -71,42 +86,32 @@ impl Stock {
                         }
                         Action::Leisure => {}
                     }
-                    // if action == Action::ProduceBerries {
-                    //     // The action of producing berries makes use of a
-                    //     // basket if one is available.
-                    //     if *remaining_uses > 0 {
-                    //         let new_good = Good::Basket {
-                    //             remaining_uses: *remaining_uses - 1,
-                    //         };
-                    //         new_stock.stock.insert(new_good, *quantity);
-                    //     }
-                    // }
                 }
             }
         }
         new_stock
     }
 
-    pub fn next_consumable(&self) -> Option<(&GoodsUnit, &u32)> {
-        self.stock
-            .iter()
-            .filter(|(good, _)| {
-                matches!(
-                    **good,
-                    GoodsUnit::Berries {
-                        remaining_lifetime: _
-                    }
-                )
-            })
-            .sorted_by_key(|(good, _)| {
-                if let GoodsUnit::Berries { remaining_lifetime } = good {
-                    *remaining_lifetime
-                } else {
-                    unreachable!()
-                }
-            })
-            .next()
-    }
+    // pub fn next_consumable(&self) -> Option<(&GoodsUnit, &u32)> {
+    //     self.stock
+    //         .iter()
+    //         .filter(|(good, _)| {
+    //             matches!(
+    //                 **good,
+    //                 GoodsUnit::Berries {
+    //                     remaining_lifetime: _
+    //                 }
+    //             )
+    //         })
+    //         .sorted_by_key(|(good, _)| {
+    //             if let GoodsUnit::Berries { remaining_lifetime } = good {
+    //                 *remaining_lifetime
+    //             } else {
+    //                 unreachable!()
+    //             }
+    //         })
+    //         .next()
+    // }
 
     /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
     pub fn next_consumables(&self) -> Vec<(&GoodsUnit, &u32)> {
@@ -115,13 +120,18 @@ impl Stock {
             .filter(|(good, _)| {
                 matches!(
                     **good,
-                    GoodsUnit::Berries {
+                    GoodsUnit {
+                        good: Good::Berries,
                         remaining_lifetime: _
                     }
                 )
             })
             .sorted_by_key(|(good, _)| {
-                if let GoodsUnit::Berries { remaining_lifetime } = good {
+                if let GoodsUnit {
+                    good: Good::Berries,
+                    remaining_lifetime,
+                } = good
+                {
                     *remaining_lifetime
                 } else {
                     unreachable!()
@@ -144,55 +154,64 @@ mod tests {
     fn test_add() {
         let mut stock = Stock::default();
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10
             }),
             None
         );
         stock.add(
-            GoodsUnit::Berries {
+            GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10,
             },
             2,
         );
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10
             }),
             Some(&2)
         );
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 9
             }),
             None
         );
         stock.add(
-            GoodsUnit::Berries {
+            GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10,
             },
             3,
         );
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10
             }),
             Some(&5)
         );
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 9
             }),
             None
         );
         stock.add(
-            GoodsUnit::Berries {
+            GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 9,
             },
             1,
         );
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 9
             }),
             Some(&1)
@@ -203,7 +222,8 @@ mod tests {
     fn test_step_forward() {
         let mut stock = HashMap::<GoodsUnit, UInt>::new();
         stock.insert(
-            GoodsUnit::Berries {
+            GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10,
             },
             5,
@@ -211,20 +231,23 @@ mod tests {
         let stock = Stock { stock: stock };
 
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10
             }),
             Some(&5)
         );
         let stock = stock.step_forward(Action::ProduceGood(Good::Berries));
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 10
             }),
             None
         );
         assert_eq!(
-            stock.stock.get(&GoodsUnit::Berries {
+            stock.stock.get(&GoodsUnit {
+                good: Good::Berries,
                 remaining_lifetime: 9
             }),
             Some(&5)

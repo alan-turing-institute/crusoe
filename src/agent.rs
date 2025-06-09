@@ -70,10 +70,10 @@ impl Agent for CrusoeAgent {
         // TODO: make configurable.
         match good {
             Good::Berries => {
-                // TODO.
-                // if self.stock.contains(Good::Basket { remaining_uses: _ }) {
-                //     return 8;
-                // }
+                // Productivity of berries is increased by access to a basket.
+                if self.stock.contains(Good::Basket) {
+                    return 8;
+                }
                 return 4;
             }
             Good::Basket => 1,
