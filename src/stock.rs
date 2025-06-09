@@ -92,27 +92,6 @@ impl Stock {
         new_stock
     }
 
-    // pub fn next_consumable(&self) -> Option<(&GoodsUnit, &u32)> {
-    //     self.stock
-    //         .iter()
-    //         .filter(|(good, _)| {
-    //             matches!(
-    //                 **good,
-    //                 GoodsUnit::Berries {
-    //                     remaining_lifetime: _
-    //                 }
-    //             )
-    //         })
-    //         .sorted_by_key(|(good, _)| {
-    //             if let GoodsUnit::Berries { remaining_lifetime } = good {
-    //                 *remaining_lifetime
-    //             } else {
-    //                 unreachable!()
-    //             }
-    //         })
-    //         .next()
-    // }
-
     /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
     pub fn next_consumables(&self) -> Vec<(&GoodsUnit, &u32)> {
         self.stock

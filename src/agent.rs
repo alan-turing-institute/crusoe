@@ -29,7 +29,7 @@ pub trait Agent {
     fn is_alive(&self) -> bool;
     /// Update
     fn act(&mut self, action: Action);
-    ///
+    /// Step the agent forward by one time step.
     fn step_forward(&mut self);
 }
 
@@ -145,6 +145,7 @@ impl Agent for CrusoeAgent {
         let action = self.choose_action();
         // Perform action, which updates the agent's stock
         self.act(action);
+        // Degrade the agent's stock.
         self.stock.step_forward(action);
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
