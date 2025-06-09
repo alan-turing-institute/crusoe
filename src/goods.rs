@@ -6,8 +6,9 @@ use crate::UInt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Good {
     Berries,
+    Fish,
     Basket,
-    // Spear,
+    Spear,
     // Smoker,
     // Boat,
     // Timber,
@@ -30,9 +31,17 @@ impl GoodsUnit {
                 good: Good::Berries,
                 remaining_lifetime: 10,
             },
+            Good::Fish => GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 1,
+            },
             Good::Basket => GoodsUnit {
                 good: Good::Basket,
                 remaining_lifetime: 10,
+            },
+            Good::Spear => GoodsUnit {
+                good: Good::Spear,
+                remaining_lifetime: 5,
             },
         }
     }
@@ -42,7 +51,9 @@ impl Good {
     pub fn is_consumer(&self) -> bool {
         match self {
             Good::Berries => true,
+            Good::Fish => true,
             Good::Basket => false,
+            Good::Spear => false,
         }
     }
 
@@ -53,7 +64,12 @@ impl Good {
                 Good::Basket => true,
                 _ => false,
             },
+            Good::Fish => match good {
+                Good::Spear => true,
+                _ => false,
+            },
             Good::Basket => false,
+            Good::Spear => false,
         }
     }
 }

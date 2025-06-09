@@ -27,7 +27,7 @@ pub trait Agent {
     fn history(&self) -> Vec<Action>;
     /// Return true if the agent is still alive.
     fn is_alive(&self) -> bool;
-    /// Update
+    /// Execture the given action.
     fn act(&mut self, action: Action);
     /// Step the agent forward by one time step.
     fn step_forward(&mut self);
@@ -77,6 +77,14 @@ impl Agent for CrusoeAgent {
                 return 4;
             }
             Good::Basket => 1,
+            Good::Fish => {
+                // Productivity of fish is increased by access to a spear.
+                if self.stock.contains(Good::Spear) {
+                    return 10;
+                }
+                return 2;
+            }
+            Good::Spear => 1,
         }
     }
 
