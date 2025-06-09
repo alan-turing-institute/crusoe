@@ -81,7 +81,8 @@ mod tests {
     fn test_simulation_initialization() {
         let sim = Simulation::new();
         assert_eq!(sim.time, 0);
-        assert!(sim.agents.is_empty());
+        assert!(!sim.agents.is_empty());
+        assert_eq!(sim.agents.len(), 1);
         assert_eq!(sim.config.max_time, 100);
 
         println!(">>>>> {:?}", sim);

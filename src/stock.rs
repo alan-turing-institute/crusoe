@@ -14,7 +14,7 @@ impl Stock {
     /// Add a quantify of a good to the stock.
     pub fn add(&mut self, good: Good, quantity: UInt) {
         if let Some(existing_qty) = &self.stock.insert(good, quantity) {
-            &self.stock.insert(good, quantity + *existing_qty);
+            let _ = &self.stock.insert(good, quantity + *existing_qty);
         }
     }
 
@@ -77,6 +77,7 @@ impl Stock {
             .next()
     }
 
+    /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
     pub fn next_consumables(&self) -> Vec<(&Good, &u32)> {
         self.stock
             .iter()
