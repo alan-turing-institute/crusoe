@@ -77,9 +77,9 @@ impl Agent for CrusoeAgent {
     // TODO: consider moving teh action_history update into act method, so
     // self can be immutable here.
     fn choose_action(&mut self) -> Action {
-        let action = Action::random(&mut StdRng::from_os_rng());
-        self.action_history.push(action.clone());
-        return action;
+        let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
+        self.action_history.push(action);
+        action
     }
 
     // TODO: initially 1 unit of nutrition required per time unit
