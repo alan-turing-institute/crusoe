@@ -3,23 +3,27 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{UInt, actions::Action, goods::Good};
+use crate::{
+    UInt,
+    actions::Action,
+    goods::{Good, GoodsUnit},
+};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stock {
-    pub stock: HashMap<Good, UInt>,
+    pub stock: HashMap<GoodsUnit, UInt>,
 }
 
 impl Stock {
     /// Add a quantify of a good to the stock.
-    pub fn add(&mut self, good: Good, quantity: UInt) {
+    pub fn add(&mut self, good: GoodsUnit, quantity: UInt) {
         if let Some(existing_qty) = &self.stock.insert(good, quantity) {
             let _ = &self.stock.insert(good, quantity + *existing_qty);
         }
     }
 
     /// Remove a quantity of a good from the stock.
-    pub fn remove(&mut self, good: &Good, quantity: UInt) {
+    pub fn remove(&mut self, good: &GoodsUnit, quantity: UInt) {
         let existing_qty = &self.stock.get(good);
         match existing_qty.as_ref() {
             Some(&&qty) if qty >= quantity => {
@@ -41,46 +45,61 @@ impl Stock {
             // If the good exists in the stock and is a consumer good, degrade it.
             // If the remaining_lifetime is 0, remove it from the stock.
             match good {
-                Good::Berries { remaining_lifetime } => {
+                GoodsUnit::Berries { remaining_lifetime } => {
                     // If the good is berries, degrade its remaining lifetime.
                     if *remaining_lifetime > 0 {
-                        let new_good = Good::Berries {
+                        let new_good = GoodsUnit::Berries {
                             remaining_lifetime: *remaining_lifetime - 1,
                         };
                         new_stock.stock.insert(new_good, *quantity);
                     } // Handle other goods similarly...
                 }
                 // Reduce remaining uses of any capital goods involved in the action.
-                Good::Basket { remaining_uses } => {
-                    if action == Action::ProduceBerries {
-                        // The action of producing berries makes use of a
-                        // basket if one is available.
-                        if *remaining_uses > 0 {
-                            let new_good = Good::Basket {
-                                remaining_uses: *remaining_uses - 1,
-                            };
-                            new_stock.stock.insert(new_good, *quantity);
+                GoodsUnit::Basket { remaining_uses } => {
+                    match action {
+                        Action::ProduceGood(good) => {
+                            if good.is_produced_using(Good::Basket) {
+                                // If the good is a basket and the action uses the basket,
+                                // degrade its remaining lifetime.
+                                if *remaining_uses > 0 {
+                                    let new_good = GoodsUnit::Basket {
+                                        remaining_uses: *remaining_uses - 1,
+                                    };
+                                    new_stock.stock.insert(new_good, *quantity);
+                                } // Handle other goods similarly...
+                            }
                         }
+                        Action::Leisure => {}
                     }
+                    // if action == Action::ProduceBerries {
+                    //     // The action of producing berries makes use of a
+                    //     // basket if one is available.
+                    //     if *remaining_uses > 0 {
+                    //         let new_good = Good::Basket {
+                    //             remaining_uses: *remaining_uses - 1,
+                    //         };
+                    //         new_stock.stock.insert(new_good, *quantity);
+                    //     }
+                    // }
                 }
             }
         }
         new_stock
     }
 
-    pub fn next_consumable(&self) -> Option<(&Good, &u32)> {
+    pub fn next_consumable(&self) -> Option<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
             .filter(|(good, _)| {
                 matches!(
                     **good,
-                    Good::Berries {
+                    GoodsUnit::Berries {
                         remaining_lifetime: _
                     }
                 )
             })
             .sorted_by_key(|(good, _)| {
-                if let Good::Berries { remaining_lifetime } = good {
+                if let GoodsUnit::Berries { remaining_lifetime } = good {
                     *remaining_lifetime
                 } else {
                     unreachable!()
@@ -90,19 +109,19 @@ impl Stock {
     }
 
     /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
-    pub fn next_consumables(&self) -> Vec<(&Good, &u32)> {
+    pub fn next_consumables(&self) -> Vec<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
             .filter(|(good, _)| {
                 matches!(
                     **good,
-                    Good::Berries {
+                    GoodsUnit::Berries {
                         remaining_lifetime: _
                     }
                 )
             })
             .sorted_by_key(|(good, _)| {
-                if let Good::Berries { remaining_lifetime } = good {
+                if let GoodsUnit::Berries { remaining_lifetime } = good {
                     *remaining_lifetime
                 } else {
                     unreachable!()
@@ -115,61 +134,65 @@ impl Stock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{UInt, actions::Action, goods::Good};
+    use crate::{
+        UInt,
+        actions::Action,
+        goods::{Good, GoodsUnit},
+    };
 
     #[test]
     fn test_add() {
         let mut stock = Stock::default();
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 10
             }),
             None
         );
         stock.add(
-            Good::Berries {
+            GoodsUnit::Berries {
                 remaining_lifetime: 10,
             },
             2,
         );
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 10
             }),
             Some(&2)
         );
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 9
             }),
             None
         );
         stock.add(
-            Good::Berries {
+            GoodsUnit::Berries {
                 remaining_lifetime: 10,
             },
             3,
         );
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 10
             }),
             Some(&5)
         );
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 9
             }),
             None
         );
         stock.add(
-            Good::Berries {
+            GoodsUnit::Berries {
                 remaining_lifetime: 9,
             },
             1,
         );
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 9
             }),
             Some(&1)
@@ -178,9 +201,9 @@ mod tests {
 
     #[test]
     fn test_step_forward() {
-        let mut stock = HashMap::<Good, UInt>::new();
+        let mut stock = HashMap::<GoodsUnit, UInt>::new();
         stock.insert(
-            Good::Berries {
+            GoodsUnit::Berries {
                 remaining_lifetime: 10,
             },
             5,
@@ -188,20 +211,20 @@ mod tests {
         let stock = Stock { stock: stock };
 
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 10
             }),
             Some(&5)
         );
-        let stock = stock.step_forward(Action::ProduceBerries);
+        let stock = stock.step_forward(Action::ProduceGood(Good::Berries));
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 10
             }),
             None
         );
         assert_eq!(
-            stock.stock.get(&Good::Berries {
+            stock.stock.get(&GoodsUnit::Berries {
                 remaining_lifetime: 9
             }),
             Some(&5)

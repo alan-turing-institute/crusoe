@@ -7,7 +7,7 @@ use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
 use crate::actions::Action;
-use crate::goods::Good;
+use crate::goods::{Good, GoodsUnit};
 use crate::stock::Stock;
 use crate::{Int, UInt};
 
@@ -69,16 +69,14 @@ impl Agent for CrusoeAgent {
     fn productivity(&self, good: Good) -> UInt {
         // TODO: make configurable.
         match good {
-            Good::Berries {
-                remaining_lifetime: _,
-            } => {
+            Good::Berries => {
                 // TODO.
                 // if self.stock.contains(Good::Basket { remaining_uses: _ }) {
                 //     return 8;
                 // }
                 return 4;
             }
-            Good::Basket { remaining_uses: _ } => 1,
+            Good::Basket => 1,
         }
     }
 
@@ -134,20 +132,11 @@ impl Agent for CrusoeAgent {
 
     fn act(&mut self, action: Action) {
         match action {
-            Action::ProduceBerries => {
-                let productivity = self.productivity(Good::Berries {
-                    remaining_lifetime: 0,
-                });
-                self.stock.add(
-                    Good::Berries {
-                        remaining_lifetime: 10,
-                    },
-                    productivity,
-                );
+            Action::ProduceGood(good) => {
+                let qty = self.productivity(good);
+                self.stock.add(GoodsUnit::new(&good), qty);
             }
             Action::Leisure => (),
-            // TODO.
-            Action::ProduceBasket => todo!(),
         }
     }
 
