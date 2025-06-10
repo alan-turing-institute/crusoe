@@ -184,7 +184,7 @@ impl Stock {
 
     /// Returns true if the stock contains any units of the given good.
     pub fn contains(&self, good: Good) -> bool {
-        for (goods_unit, _) in &self.stock {
+        for goods_unit in self.stock.keys() {
             if goods_unit.good == good {
                 return true;
             }
