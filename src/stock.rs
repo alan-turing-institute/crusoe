@@ -2,18 +2,34 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumIter;
 
 use crate::{
     UInt,
     actions::Action,
     config::core_config,
     goods::{Good, GoodsUnit, GoodsUnitLevel},
-    learning::agent_state::InvLevel,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stock {
     pub stock: HashMap<GoodsUnit, UInt>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
+pub enum InvLevel {
+    Critical,
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
+pub enum RemainingLevel {
+    Critical,
+    Low,
+    Medium,
+    High,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,25 +52,25 @@ impl Stock {
                 ) if *qty < config.agent.inv_level_low => match *remaining_lifetime {
                     x if x < config.agent.inv_level_low => {
                         ds.insert(
-                            GoodsUnitLevel::new(*good, InvLevel::Critical),
+                            GoodsUnitLevel::new(*good, RemainingLevel::Critical),
                             InvLevel::Critical,
                         );
                     }
                     x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
                         ds.insert(
-                            GoodsUnitLevel::new(*good, InvLevel::Low),
+                            GoodsUnitLevel::new(*good, RemainingLevel::Low),
                             InvLevel::Critical,
                         );
                     }
                     x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
                         ds.insert(
-                            GoodsUnitLevel::new(*good, InvLevel::Medium),
+                            GoodsUnitLevel::new(*good, RemainingLevel::Medium),
                             InvLevel::Critical,
                         );
                     }
                     x if x >= config.agent.inv_level_high => {
                         ds.insert(
-                            GoodsUnitLevel::new(*good, InvLevel::High),
+                            GoodsUnitLevel::new(*good, RemainingLevel::High),
                             InvLevel::Critical,
                         );
                     }
@@ -70,18 +86,27 @@ impl Stock {
                     match *remaining_lifetime {
                         x if x < config.agent.inv_level_low => {
                             ds.insert(
-                                GoodsUnitLevel::new(*good, InvLevel::Critical),
+                                GoodsUnitLevel::new(*good, RemainingLevel::Critical),
                                 InvLevel::Low,
                             );
                         }
                         x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
-                            ds.insert(GoodsUnitLevel::new(*good, InvLevel::Low), InvLevel::Low);
+                            ds.insert(
+                                GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                                InvLevel::Low,
+                            );
                         }
                         x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
-                            ds.insert(GoodsUnitLevel::new(*good, InvLevel::Medium), InvLevel::Low);
+                            ds.insert(
+                                GoodsUnitLevel::new(*good, RemainingLevel::Medium),
+                                InvLevel::Low,
+                            );
                         }
                         x if x >= config.agent.inv_level_high => {
-                            ds.insert(GoodsUnitLevel::new(*good, InvLevel::High), InvLevel::Low);
+                            ds.insert(
+                                GoodsUnitLevel::new(*good, RemainingLevel::High),
+                                InvLevel::Low,
+                            );
                         }
                         _ => unreachable!("No other lifetime levels to handle"),
                     }
@@ -96,21 +121,27 @@ impl Stock {
                     match *remaining_lifetime {
                         x if x < config.agent.inv_level_low => {
                             ds.insert(
-                                GoodsUnitLevel::new(*good, InvLevel::Critical),
+                                GoodsUnitLevel::new(*good, RemainingLevel::Critical),
                                 InvLevel::Medium,
                             );
                         }
                         x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
-                            ds.insert(GoodsUnitLevel::new(*good, InvLevel::Low), InvLevel::Medium);
+                            ds.insert(
+                                GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                                InvLevel::Medium,
+                            );
                         }
                         x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
                             ds.insert(
-                                GoodsUnitLevel::new(*good, InvLevel::Medium),
+                                GoodsUnitLevel::new(*good, RemainingLevel::Medium),
                                 InvLevel::Medium,
                             );
                         }
                         x if x >= config.agent.inv_level_high => {
-                            ds.insert(GoodsUnitLevel::new(*good, InvLevel::High), InvLevel::Medium);
+                            ds.insert(
+                                GoodsUnitLevel::new(*good, RemainingLevel::High),
+                                InvLevel::Medium,
+                            );
                         }
 
                         _ => unreachable!("No other lifetime levels to handle"),
@@ -125,18 +156,27 @@ impl Stock {
                 ) if *qty >= config.agent.inv_level_high => match *remaining_lifetime {
                     x if x < config.agent.inv_level_low => {
                         ds.insert(
-                            GoodsUnitLevel::new(*good, InvLevel::Critical),
+                            GoodsUnitLevel::new(*good, RemainingLevel::Critical),
                             InvLevel::High,
                         );
                     }
                     x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
-                        ds.insert(GoodsUnitLevel::new(*good, InvLevel::Low), InvLevel::High);
+                        ds.insert(
+                            GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                            InvLevel::High,
+                        );
                     }
                     x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
-                        ds.insert(GoodsUnitLevel::new(*good, InvLevel::Medium), InvLevel::High);
+                        ds.insert(
+                            GoodsUnitLevel::new(*good, RemainingLevel::Medium),
+                            InvLevel::High,
+                        );
                     }
                     x if x >= config.agent.inv_level_high => {
-                        ds.insert(GoodsUnitLevel::new(*good, InvLevel::High), InvLevel::High);
+                        ds.insert(
+                            GoodsUnitLevel::new(*good, RemainingLevel::High),
+                            InvLevel::High,
+                        );
                     }
                     _ => unreachable!("No other lifetime levels to handle"),
                 },
@@ -145,18 +185,6 @@ impl Stock {
         }
         StockDiscrete { stock: ds }
     }
-
-    // pub fn representation<S, L>(&self) -> ((S, L), (S, L))
-    // where
-    //     S: std::cmp::Eq + std::hash::Hash + Clone,
-    //     L: std::cmp::Eq + std::hash::Hash + Clone,
-    // {
-    //     let discr = self.discretise();
-    //     (
-    //         (AgentStateItems::Food, discr.food),
-    //         (AgentStateItems::Water, discr.water),
-    //     )
-    // }
 }
 
 impl Stock {

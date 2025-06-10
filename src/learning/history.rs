@@ -1,9 +1,4 @@
-use super::{
-    agent_state::{DiscrRep, InvLevel},
-    q_table::QKey,
-    reward::Reward,
-};
-use crate::actions::ActionFlattened as Action;
+use super::{agent_state::DiscrRep, q_table::QKey, reward::Reward};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 

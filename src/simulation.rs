@@ -34,10 +34,10 @@ impl Simulation {
         //     multi_policy,
         // );
         let mut agent_hist = BTreeMap::new();
-        agent_hist.insert(1, History::new());
+        agent_hist.insert(0, History::new());
         Simulation {
             time: 0,
-            agents: vec![AgentType::Crusoe(CrusoeAgent::new(1))], // Initialize with one Crusoe agent
+            agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
             config, // Default value, can be overridden
             agent_hist,
         }

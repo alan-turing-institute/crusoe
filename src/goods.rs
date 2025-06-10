@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
-use crate::{UInt, actions::Action, learning::agent_state::InvLevel};
+use crate::{UInt, actions::Action, stock::RemainingLevel};
 
 // A good in the abstract (as opposed to particular units of a good).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter)]
@@ -29,11 +29,11 @@ pub struct GoodsUnit {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GoodsUnitLevel {
     pub good: Good,
-    pub remaining_lifetime: InvLevel,
+    pub remaining_lifetime: RemainingLevel,
 }
 
 impl GoodsUnitLevel {
-    pub fn new(good: Good, remaining_lifetime: InvLevel) -> Self {
+    pub fn new(good: Good, remaining_lifetime: RemainingLevel) -> Self {
         GoodsUnitLevel {
             good,
             remaining_lifetime,

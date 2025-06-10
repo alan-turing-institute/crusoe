@@ -143,7 +143,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::learning::agent_state::InvLevel;
+    use crate::stock::InvLevel;
 
     #[test]
     fn test_multi_product() {

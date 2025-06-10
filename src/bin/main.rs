@@ -9,7 +9,7 @@ use strum::IntoEnumIterator;
 
 fn main() {
     let mut sim = Simulation::new();
-    let num_agents = 10u32;
+    let num_agents = 1u32;
     let multi_policy = false;
     let mut model: SARSAModel<Stock, _, _, _> = SARSAModel::new(
         (0..num_agents).collect(),
