@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{UInt, actions::Action};
+use crate::{UInt, actions::Action, learning::agent_state::InvLevel};
 
 // A good in the abstract (as opposed to particular units of a good).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -21,6 +21,23 @@ pub enum Good {
 pub struct GoodsUnit {
     pub good: Good,
     pub remaining_lifetime: UInt, // interpreted as remaining uses for capital goods.
+}
+
+// For units of goods, each has a lifetime remaining value before it is destroyed.
+// For capital goods, (e.g. spear, timber), each has a number of uses remaining before it is destroyed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GoodsUnitLevel {
+    pub good: Good,
+    pub remaining_lifetime: InvLevel,
+}
+
+impl GoodsUnitLevel {
+    pub fn new(good: Good, remaining_lifetime: InvLevel) -> Self {
+        GoodsUnitLevel {
+            good,
+            remaining_lifetime,
+        }
+    }
 }
 
 impl GoodsUnit {

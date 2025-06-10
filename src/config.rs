@@ -5,7 +5,25 @@ use crate::UInt;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub max_time: UInt,
+    pub agent: AgentConfig,
     pub rl: RLConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct AgentConfig {
+    pub inv_level_low: UInt,
+    pub inv_level_med: UInt,
+    pub inv_level_high: UInt,
+}
+
+impl Default for AgentConfig {
+    fn default() -> Self {
+        AgentConfig {
+            inv_level_low: 5,
+            inv_level_med: 10,
+            inv_level_high: 20,
+        }
+    }
 }
 
 impl Default for Config {
@@ -13,6 +31,7 @@ impl Default for Config {
         Config {
             max_time: 100,
             rl: RLConfig::default(),
+            agent: AgentConfig::default(),
         }
     }
 }
@@ -59,6 +78,7 @@ mod tests {
         let config = Config {
             max_time: 100,
             rl: RLConfig::default(),
+            agent: AgentConfig::default(),
         };
         let serialized = toml::to_string(&config).unwrap();
 
