@@ -1,13 +1,12 @@
-use super::serde_utils;
 use crate::config::core_config;
+use crate::learning::serde_utils;
 use itertools::Itertools;
-use krabmaga::HashMap;
-use rand::{rngs::StdRng, Rng};
+use rand::{Rng, rngs::StdRng};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use strum::IntoEnumIterator;
-use tuple_conv::RepeatedTuple;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QTable<S, L, A>
@@ -83,7 +82,7 @@ where
         for el in q {
             // println!("{:?}", el);
             let q_key = QKey(el.0, el.1);
-            q_tbl.insert(q_key, core_config().rl.INIT_Q_VALUES);
+            q_tbl.insert(q_key, core_config().rl.init_q_value);
         }
 
         QTable { tab: q_tbl }
@@ -117,14 +116,14 @@ where
                     .unwrap();
             }
         }
-        let r: f32 = rng.gen();
-        if r < core_config().rl.EPSILON {
+        let r: f32 = rng.random();
+        if r < core_config().rl.epsilon {
             optimal_a = self.pick_rnd(rng);
         }
         (optimal_a, *q_optimal)
     }
     fn pick_rnd(&self, rng: &mut StdRng) -> A {
-        let r: f32 = rng.gen();
+        let r: f32 = rng.random();
         let mut a_iter = A::iter();
         let a: A;
         if r < 0.3 {
@@ -144,7 +143,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::agent_state::InvLevel;
+    use crate::learning::agent_state::InvLevel;
 
     #[test]
     fn test_multi_product() {

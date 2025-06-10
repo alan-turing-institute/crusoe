@@ -1,6 +1,6 @@
 use crate::UInt;
 use crate::agent::{Agent, AgentType, CrusoeAgent};
-use crate::config::Config;
+use crate::config::{Config, RLConfig};
 use serde::{Deserialize, Serialize};
 use std::vec::Vec;
 
@@ -16,7 +16,10 @@ impl Default for Simulation {
         Simulation {
             time: 0,
             agents: Vec::new(),
-            config: Config { max_time: 100 }, // Default value, can be overridden
+            config: Config {
+                max_time: 100,
+                rl: RLConfig::default(),
+            }, // Default value, can be overridden
         }
     }
 }
@@ -26,7 +29,7 @@ impl Simulation {
         Simulation {
             time: 0,
             agents: vec![AgentType::Crusoe(CrusoeAgent::new(1))], // Initialize with one Crusoe agent
-            config: Config { max_time: 100 }, // Default value, can be overridden
+            config: Config::default(), // Default value, can be overridden
         }
     }
 

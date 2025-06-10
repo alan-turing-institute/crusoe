@@ -2,9 +2,52 @@ use serde::{Deserialize, Serialize};
 
 use crate::UInt;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub max_time: UInt,
+    pub rl: RLConfig,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            max_time: 100,
+            rl: RLConfig::default(),
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
+pub struct RLConfig {
+    pub init_q_value: f32,
+    pub sarsa_n: u8,
+    pub gamma: f32,
+    pub alpha: f32,
+    pub epsilon: f32,
+    pub multi_policy: bool,
+    // pub save_model: bool,
+    // pub load_model: bool,
+    // pub model_checkpoint_file: Option<String>,
+}
+
+impl Default for RLConfig {
+    fn default() -> Self {
+        RLConfig {
+            init_q_value: 0.0,
+            sarsa_n: 1,
+            gamma: 0.9,
+            alpha: 0.1,
+            epsilon: 0.1,
+            multi_policy: false,
+            // save_model: false,
+            // load_model: false,
+            // model_checkpoint_file: None,
+        }
+    }
+}
+
+pub fn core_config() -> Config {
+    Config::default()
 }
 
 #[cfg(test)]
@@ -13,7 +56,10 @@ mod tests {
 
     #[test]
     fn test_config_serialization_toml() {
-        let config = Config { max_time: 100 };
+        let config = Config {
+            max_time: 100,
+            rl: RLConfig::default(),
+        };
         let serialized = toml::to_string(&config).unwrap();
 
         assert_eq!(serialized, "max_time = 100\n");

@@ -1,15 +1,17 @@
+use crate::config::core_config;
+
 use super::{
     agent_state::DiscrRep,
     history::History,
     q_table::{QKey, QTable},
     serde_utils,
 };
-use crate::config::core_config;
-use krabmaga::HashMap;
+// use crate::config::core_config;
 use rand::rngs::StdRng;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::Write;
@@ -75,15 +77,11 @@ where
     }
 
     fn policy_id(&self, id: u32) -> u32 {
-        if self.multi_policy {
-            id
-        } else {
-            0
-        }
+        if self.multi_policy { id } else { 0 }
     }
 
     pub fn step(&mut self, t: i32, agent_hist: &BTreeMap<u32, History<T, S, L, A>>) {
-        let tau_: i32 = t - core_config().rl.SARSA_N as i32 - 1;
+        let tau_: i32 = t - core_config().rl.sarsa_n as i32 - 1;
 
         // do update
         if tau_ >= 0 {
@@ -93,7 +91,7 @@ where
                 let traj = &hist.trajectory;
 
                 let tau = tau_ as usize;
-                let n = core_config().rl.SARSA_N as usize;
+                let n = core_config().rl.sarsa_n as usize;
                 let mut g: f32 = 0.0;
 
                 // sum n rewards (discounted back)
@@ -101,20 +99,20 @@ where
                     // assuming index (s0,a0,r1),(s1,a1,r2)...
                     // book assumes (s0,a0),(s1,a1,r1)...
                     let r_i = traj[i - 1].reward.val;
-                    g += core_config().rl.GAMMA.powf((i - tau - 1) as f32) * r_i as f32;
+                    g += core_config().rl.gamma.powf((i - tau - 1) as f32) * r_i as f32;
                 }
 
                 // bootstrap using q(n+1)
                 let q_btstrap = tab
                     .get(&traj[tau + n].representation())
                     .expect("all possible state-actions will be in the QTable");
-                g += core_config().rl.GAMMA.powf(n as f32) * q_btstrap;
+                g += core_config().rl.gamma.powf(n as f32) * q_btstrap;
 
                 // update q for (s_tau,a_tau)
                 let mut q_tau = *tab
                     .get(&traj[tau].representation())
                     .expect("all possible state-actions will be in the QTable");
-                q_tau += core_config().rl.ALPHA * (g - q_tau);
+                q_tau += core_config().rl.alpha * (g - q_tau);
                 let old_q = tab.insert(traj[tau].representation(), q_tau);
                 // println!("{:?} -> {:?}", old_q, q_tau)
             }
@@ -147,58 +145,58 @@ where
         a
     }
 
-    pub fn save(mut self) {
-        let mut total_itr = core_config().world.N_STEPS;
-        if core_config().rl.LOAD_MODEL {
-            total_itr += self.checkpoint_itr.expect("set when model loaded");
-        }
-        let mut f = File::create(format!(
-            "multiP_{}__agents_{}__trading_{}__totalItr_{}.json",
-            if core_config().rl.MULTI_POLICY { 1 } else { 0 },
-            core_config().world.N_AGENTS,
-            if core_config().world.HAS_TRADING {
-                1
-            } else {
-                0
-            },
-            total_itr
-        ))
-        .unwrap();
+    // pub fn save(mut self) {
+    //     let mut total_itr = core_config().world.N_STEPS;
+    //     if core_config().rl.LOAD_MODEL {
+    //         total_itr += self.checkpoint_itr.expect("set when model loaded");
+    //     }
+    //     let mut f = File::create(format!(
+    //         "multiP_{}__agents_{}__trading_{}__totalItr_{}.json",
+    //         if core_config().rl.MULTI_POLICY { 1 } else { 0 },
+    //         core_config().world.N_AGENTS,
+    //         if core_config().world.HAS_TRADING {
+    //             1
+    //         } else {
+    //             0
+    //         },
+    //         total_itr
+    //     ))
+    //     .unwrap();
 
-        let mut q_tbls;
-        if core_config().rl.MULTI_POLICY {
-            q_tbls = self.q_tbls;
-        } else {
-            q_tbls = HashMap::new();
-            q_tbls.insert(0, self.q_tbls.remove(&0).unwrap());
-        }
+    //     let mut q_tbls;
+    //     if core_config().rl.MULTI_POLICY {
+    //         q_tbls = self.q_tbls;
+    //     } else {
+    //         q_tbls = HashMap::new();
+    //         q_tbls.insert(0, self.q_tbls.remove(&0).unwrap());
+    //     }
 
-        writeln!(
-            f,
-            "{}",
-            serde_json::to_string_pretty(&SARSACheckpoint {
-                total_itr: total_itr,
-                num_agents: core_config().world.N_AGENTS,
-                multi_policy: core_config().rl.MULTI_POLICY,
-                q_tbls,
-            })
-            .unwrap()
-        )
-        .unwrap();
-    }
+    //     writeln!(
+    //         f,
+    //         "{}",
+    //         serde_json::to_string_pretty(&SARSACheckpoint {
+    //             total_itr: total_itr,
+    //             num_agents: core_config().world.N_AGENTS,
+    //             multi_policy: core_config().rl.MULTI_POLICY,
+    //             q_tbls,
+    //         })
+    //         .unwrap()
+    //     )
+    //     .unwrap();
+    // }
 
-    pub fn load(checkpoint_file: &str) -> Self {
-        let path = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
-            .join(checkpoint_file);
-        let checkpoint = SARSACheckpoint::parse(std::fs::read_to_string(path).unwrap());
+    // pub fn load(checkpoint_file: &str) -> Self {
+    //     let path = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+    //         .join(checkpoint_file);
+    //     let checkpoint = SARSACheckpoint::parse(std::fs::read_to_string(path).unwrap());
 
-        SARSAModel {
-            q_tbls: checkpoint.q_tbls,
-            multi_policy: checkpoint.multi_policy,
-            agent_state_type: PhantomData,
-            checkpoint_itr: Some(checkpoint.total_itr),
-        }
-    }
+    //     SARSAModel {
+    //         q_tbls: checkpoint.q_tbls,
+    //         multi_policy: checkpoint.multi_policy,
+    //         agent_state_type: PhantomData,
+    //         checkpoint_itr: Some(checkpoint.total_itr),
+    //     }
+    // }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
