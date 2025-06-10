@@ -292,3 +292,29 @@ impl PartialGoodsUnit {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::goods::{Good, GoodsUnit};
+
+    #[test]
+    fn test_step_forward() {
+        let good = GoodsUnit {
+            good: Good::Berries,
+            remaining_lifetime: 3,
+        };
+        assert_eq!(good.remaining_lifetime, 3);
+
+        let action = Action::Leisure;
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 2);
+
+        let action = Action::ProduceGood(Good::Berries);
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 1);
+
+        let good = good.step_forward(action);
+        assert!(good.is_none());
+    }
+}
