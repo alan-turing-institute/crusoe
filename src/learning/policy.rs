@@ -1,5 +1,7 @@
-use super::{action::Action, agent_state::AgentState};
+use crate::stock::StockDiscrete;
+
+use crate::actions::ActionFlattened as Action;
 
 pub trait Policy {
-    fn chose_action(&self, agent_state: &AgentState) -> Action;
+    fn chose_action(&self, agent_state: &StockDiscrete) -> Action;
 }

@@ -18,7 +18,7 @@ pub struct Stock {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StockDiscrete {
-    stock: HashMap<GoodsUnitLevel, InvLevel>,
+    pub stock: HashMap<GoodsUnitLevel, InvLevel>,
 }
 
 impl Stock {

@@ -10,7 +10,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct AgentConfig {
+pub struct AgentConfig {
     pub inv_level_low: UInt,
     pub inv_level_med: UInt,
     pub inv_level_high: UInt,

@@ -16,10 +16,7 @@ impl Default for Simulation {
         Simulation {
             time: 0,
             agents: Vec::new(),
-            config: Config {
-                max_time: 100,
-                rl: RLConfig::default(),
-            }, // Default value, can be overridden
+            config: Config::default(),
         }
     }
 }
@@ -45,6 +42,7 @@ impl Simulation {
         // - Update whether agent is alive
         // - Degrade the agent's stock
         // - End the day
+        println!("{:#?}", self);
         for agent in self.agents.iter_mut() {
             // Check agent is alive
             if !agent.is_alive() {
