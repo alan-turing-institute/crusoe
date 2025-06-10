@@ -1,13 +1,10 @@
-use std::collections::HashMap;
-
 use enum_dispatch::enum_dispatch;
-use itertools::Itertools;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
 use crate::actions::Action;
-use crate::goods::Good;
+use crate::goods::{Good, GoodsUnit};
 use crate::stock::Stock;
 use crate::{Int, UInt};
 
@@ -27,9 +24,9 @@ pub trait Agent {
     fn history(&self) -> Vec<Action>;
     /// Return true if the agent is still alive.
     fn is_alive(&self) -> bool;
-    /// Update
+    /// Execture the given action.
     fn act(&mut self, action: Action);
-    ///
+    /// Step the agent forward by one time step.
     fn step_forward(&mut self);
 }
 
@@ -65,12 +62,26 @@ impl Agent for CrusoeAgent {
         &self.stock
     }
 
+    // TODO: Some capital goods take multiple time units to produce.
     fn productivity(&self, good: Good) -> UInt {
         // TODO: make configurable.
         match good {
-            Good::Berries {
-                remaining_lifetime: _,
-            } => 4, // 4 units per day.
+            Good::Berries => {
+                // Productivity of berries is increased by access to a basket.
+                if self.stock.contains(Good::Basket) {
+                    return 8;
+                }
+                return 4;
+            }
+            Good::Basket => 1,
+            Good::Fish => {
+                // Productivity of fish is increased by access to a spear.
+                if self.stock.contains(Good::Spear) {
+                    return 10;
+                }
+                return 2;
+            }
+            Good::Spear => 1,
         }
     }
 
@@ -126,18 +137,11 @@ impl Agent for CrusoeAgent {
 
     fn act(&mut self, action: Action) {
         match action {
-            Action::ProduceBerries => {
-                let productivity = self.productivity(Good::Berries {
-                    remaining_lifetime: 0,
-                });
-                self.stock.add(
-                    Good::Berries {
-                        remaining_lifetime: 10,
-                    },
-                    productivity,
-                );
-            } // increase stock by `productivity` units of berries.
-            Action::Leisure => (), // do nothing
+            Action::ProduceGood(good) => {
+                let qty = self.productivity(good);
+                self.stock.add(GoodsUnit::new(&good), qty);
+            }
+            Action::Leisure => (),
         }
     }
 
@@ -146,6 +150,7 @@ impl Agent for CrusoeAgent {
         let action = self.choose_action();
         // Perform action, which updates the agent's stock
         self.act(action);
+        // Degrade the agent's stock.
         self.stock.step_forward(action);
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
