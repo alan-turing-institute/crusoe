@@ -184,6 +184,8 @@ pub fn some_agent_fn(x: Int, y: Int) -> Int {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*; // Import the functions from the parent module
 
     #[test]
@@ -191,5 +193,29 @@ mod tests {
         assert_eq!(some_agent_fn(2, 3), 5);
         assert_eq!(some_agent_fn(-1, 1), 0);
         assert_eq!(some_agent_fn(0, 0), 0);
+    }
+
+    #[test]
+    fn test_step_forward() {
+        let mut agent = CrusoeAgent::new(1);
+        agent.stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            5,
+        );
+        agent.step_forward();
+        // Expected stock after one step forward is 4 units of berries
+        // (one unit was consumed) with remaining lifetime 9.
+        let mut expected = Stock::default();
+        expected.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 9,
+            },
+            4,
+        );
+        assert_eq!(agent.stock, expected);
     }
 }
