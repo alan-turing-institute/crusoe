@@ -10,6 +10,22 @@ pub enum Action {
     Leisure,
 }
 
+impl From<ActionFlattened> for Action {
+    fn from(action: ActionFlattened) -> Self {
+        match action {
+            ActionFlattened::ProduceBerries => Action::ProduceGood(Good::Berries),
+            ActionFlattened::ProduceFish => Action::ProduceGood(Good::Fish),
+            ActionFlattened::ProduceBasket => Action::ProduceGood(Good::Basket),
+            ActionFlattened::ProduceSpear => Action::ProduceGood(Good::Spear),
+            ActionFlattened::ProduceSmoker => Action::Leisure, // Placeholder for future goods
+            ActionFlattened::ProduceBoat => Action::Leisure,   // Placeholder for future goods
+            ActionFlattened::ProduceTimber => Action::Leisure, // Placeholder for future goods
+            ActionFlattened::ProduceAxe => Action::Leisure,    // Placeholder for future goods
+            ActionFlattened::Leisure => Action::Leisure,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter)]
 pub enum ActionFlattened {
     ProduceBerries,

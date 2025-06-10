@@ -1,12 +1,16 @@
+use std::i32;
+
 use enum_dispatch::enum_dispatch;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
-use crate::actions::Action;
+use crate::actions::{Action, ActionFlattened};
 use crate::goods::{Good, GoodsUnit};
+use crate::learning::agent_state::DiscrRep;
+use crate::learning::reward::Reward;
 use crate::stock::Stock;
-use crate::{Int, UInt};
+use crate::{Int, Model, UInt};
 
 #[enum_dispatch]
 pub trait Agent {
@@ -18,24 +22,29 @@ pub trait Agent {
     fn productivity(&self, good: Good) -> UInt;
     /// The agent's choice of action in the next time step.
     fn choose_action(&mut self) -> Action;
+    /// The agent's choice of action in the next time step.
+    fn choose_action_with_model(&mut self, model: &Model) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
     fn consume(&mut self, nutritional_units: UInt) -> bool;
     /// Get the complete history of agent actions.
     fn history(&self) -> Vec<Action>;
+    /// Get the reward history.
+    fn reward_history(&self) -> Vec<Reward>;
     /// Return true if the agent is still alive.
     fn is_alive(&self) -> bool;
     /// Execture the given action.
     fn act(&mut self, action: Action);
     /// Step the agent forward by one time step.
-    fn step_forward(&mut self);
+    fn step_forward(&mut self, model: &Model);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CrusoeAgent {
-    id: Int,
-    stock: Stock,
-    is_alive: bool,
-    action_history: Vec<Action>,
+    pub id: Int,
+    pub stock: Stock,
+    pub is_alive: bool,
+    pub action_history: Vec<Action>,
+    pub reward_history: Vec<Reward>,
 }
 
 impl CrusoeAgent {
@@ -45,6 +54,7 @@ impl CrusoeAgent {
             stock: Stock::default(),
             is_alive: true,
             action_history: vec![],
+            reward_history: vec![],
         }
     }
 }
@@ -89,8 +99,17 @@ impl Agent for CrusoeAgent {
     // self can be immutable here.
     fn choose_action(&mut self) -> Action {
         let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
-        self.action_history.push(action);
+        self.action_history.push(action.into());
         action
+    }
+
+    // TODO: consider moving teh action_history update into act method, so
+    // self can be immutable here.
+    fn choose_action_with_model(&mut self, model: &Model) -> Action {
+        let action =
+            model.sample_action_by_id(0, &self.stock.representation(), &mut StdRng::from_os_rng());
+        self.action_history.push(action.into());
+        action.into()
     }
 
     // TODO: initially 1 unit of nutrition required per time unit
@@ -145,9 +164,9 @@ impl Agent for CrusoeAgent {
         }
     }
 
-    fn step_forward(&mut self) {
+    fn step_forward(&mut self, model: &Model) {
         // Select action
-        let action = self.choose_action();
+        let action = self.choose_action_with_model(model);
         // Perform action, which updates the agent's stock
         self.act(action);
         // Degrade the agent's stock.
@@ -155,6 +174,22 @@ impl Agent for CrusoeAgent {
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
         self.is_alive = self.consume(1);
+        // Update reward history
+        match (action, self.is_alive) {
+            (Action::ProduceGood(_), true) => {
+                self.reward_history.push(Reward::new(0));
+            }
+            (Action::Leisure, true) => {
+                self.reward_history.push(Reward::new(1));
+            }
+            (_, false) => {
+                self.reward_history.push(Reward::new(-100000));
+            }
+        };
+    }
+
+    fn reward_history(&self) -> Vec<Reward> {
+        self.reward_history.clone()
     }
 }
 
@@ -164,19 +199,21 @@ pub enum AgentType {
     Crusoe(CrusoeAgent),
 }
 
-/// A simple function that adds two integers.
-pub fn some_agent_fn(x: Int, y: Int) -> Int {
-    x + y
+impl AgentType {
+    pub fn action_history(&self) -> Vec<ActionFlattened> {
+        match self {
+            AgentType::Crusoe(agent) => agent.action_history.iter().map(|a| (*a).into()).collect(),
+        }
+    }
+
+    pub fn reward_history(&self) -> Vec<Reward> {
+        match self {
+            AgentType::Crusoe(agent) => agent.reward_history().clone(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*; // Import the functions from the parent module
-
-    #[test]
-    fn test_some_agent_fn() {
-        assert_eq!(some_agent_fn(2, 3), 5);
-        assert_eq!(some_agent_fn(-1, 1), 0);
-        assert_eq!(some_agent_fn(0, 0), 0);
-    }
 }

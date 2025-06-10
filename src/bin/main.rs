@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use crusoe::{
     actions::ActionFlattened as Action,
+    agent,
     goods::Good,
-    learning::{agent_state::LevelPair, tabular_rl::SARSAModel},
+    learning::{agent_state::LevelPair, history::History, tabular_rl::SARSAModel},
     simulation::Simulation,
     stock::Stock,
 };
@@ -12,7 +15,7 @@ fn main() {
 
     let num_agents = 10u32;
     let multi_policy = false;
-    let model: SARSAModel<Stock, _, _, _> = SARSAModel::new(
+    let mut model: SARSAModel<Stock, _, _, _> = SARSAModel::new(
         (0..num_agents).collect(),
         Good::iter().collect::<Vec<Good>>(),
         LevelPair::iter().collect::<Vec<LevelPair>>(),
@@ -21,9 +24,12 @@ fn main() {
     );
 
     while sim.time < sim.config.max_time {
-        sim.step_forward();
+        sim.step_forward(&model);
         println!("Time: {}, Agents: {}", sim.time, sim.agents.len());
         println!("Actions:  {0:#?}", sim.agents[0]);
         sim.time += 1;
+        // TODO: add agent history
+
+        model.step(sim.time as i32, &mut sim.agent_hist);
     }
 }
