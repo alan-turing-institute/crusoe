@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::UInt;
+use crate::{UInt, actions::Action};
 
 // A good in the abstract (as opposed to particular units of a good).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -42,6 +42,40 @@ impl GoodsUnit {
             Good::Spear => GoodsUnit {
                 good: Good::Spear,
                 remaining_lifetime: 5,
+            },
+        }
+    }
+
+    pub fn step_forward(&self, action: Action) -> Option<Self> {
+        match self.good.is_consumer() {
+            // If the good exists in the stock and is a consumer good, degrade it.
+            true => {
+                if self.remaining_lifetime > 1 {
+                    return Some(GoodsUnit {
+                        good: self.good,
+                        remaining_lifetime: self.remaining_lifetime - 1,
+                    });
+                }
+                // If the remaining_lifetime is 0 (after the step), return None.
+                None
+            }
+            // If the good is a capital good and the action makes use of it,
+            // degrade its remaining lifetime. Otherwise return it unchanged.
+            false => match action {
+                Action::ProduceGood(produced_good) => {
+                    if produced_good.is_produced_using(self.good) {
+                        if self.remaining_lifetime > 1 {
+                            return Some(GoodsUnit {
+                                good: self.good,
+                                remaining_lifetime: self.remaining_lifetime - 1,
+                            });
+                        }
+                        // If the remaining_lifetime is 0 (after the step), return None.
+                        return None;
+                    }
+                    Some(self.clone())
+                }
+                Action::Leisure => Some(self.clone()),
             },
         }
     }

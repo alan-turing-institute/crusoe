@@ -52,35 +52,8 @@ impl Stock {
         let mut new_stock = Stock::default();
         // Degrade all consumer goods by 1 time unit.
         for (goods_unit, quantity) in &self.stock {
-            match goods_unit.good.is_consumer() {
-                // If the good exists in the stock and is a consumer good, degrade it.
-                // If the remaining_lifetime is 0 (after the step), remove it from the stock.
-                true => {
-                    if goods_unit.remaining_lifetime > 1 {
-                        let new_good = GoodsUnit {
-                            good: goods_unit.good,
-                            remaining_lifetime: goods_unit.remaining_lifetime - 1,
-                        };
-                        new_stock.stock.insert(new_good, *quantity);
-                    }
-                }
-                // If the good is a capital good and the action makes use of it,
-                // degrade its remaining lifetime.
-                // If the new remaining lifetime is zero, remove it from the stock.
-                false => match action {
-                    Action::ProduceGood(action_good) => {
-                        if action_good.is_produced_using(goods_unit.good) {
-                            if goods_unit.remaining_lifetime > 1 {
-                                let new_good = GoodsUnit {
-                                    good: goods_unit.good,
-                                    remaining_lifetime: goods_unit.remaining_lifetime - 1,
-                                };
-                                new_stock.stock.insert(new_good, *quantity);
-                            }
-                        }
-                    }
-                    Action::Leisure => {}
-                },
+            if let Some(new_goods_unit) = goods_unit.step_forward(action) {
+                new_stock.stock.insert(new_goods_unit, *quantity);
             }
         }
         new_stock
@@ -255,6 +228,22 @@ mod tests {
                 remaining_lifetime: 4
             }),
             Some(&1)
+        );
+        // Test that the basket is not degraded if it is not used in production (e.g. of fish).
+        let stock = stock.step_forward(Action::ProduceGood(Good::Fish));
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Basket,
+                remaining_lifetime: 4
+            }),
+            Some(&1)
+        );
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Basket,
+                remaining_lifetime: 3
+            }),
+            None
         );
     }
 }
