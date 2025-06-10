@@ -261,6 +261,33 @@ impl PartialGoodsUnit {
         self.time_to_completion = self.time_to_completion - 1
     }
 
-    // TODO NEXT: Discontinuities in production must be penalised!
-    // pub fn step_forward(&mut self, action: Action) -> Option<Self> {}
+    // Step forward this partially complete goods unit and penalise any
+    // discontinuity in the production process.
+    pub fn step_forward(&self, action: Action) -> Option<PartialGoodsUnit> {
+        // If the action is to continue production, return the partial good
+        // unchanged (as production was incremented when the agent acted).
+        match action {
+            Action::ProduceGood(good) => {
+                if good == self.good {
+                    return Some(*self);
+                }
+            }
+            _ => {}
+        }
+        // If the action is *not* to continue production, extend
+        // the remaining time to completion by 1 time unit.
+        let time_to_completion = self.time_to_completion + 1;
+        let max_time_to_completion = self
+            .good
+            .multiple_timesteps_to_complete()
+            .expect("PartialGoodsUnit must take multiple timesteps to complete");
+
+        if self.time_to_completion == max_time_to_completion {
+            return None;
+        }
+        Some(PartialGoodsUnit {
+            good: self.good,
+            time_to_completion: time_to_completion,
+        })
+    }
 }

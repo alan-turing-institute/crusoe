@@ -21,12 +21,12 @@ pub trait Agent {
     fn choose_action(&mut self) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
     fn consume(&mut self, nutritional_units: UInt) -> bool;
-    fn action_history(&self) -> Vec<Action>;
     /// Get the complete history of agent actions.
-    fn stock_history(&self) -> Vec<Stock>;
+    fn action_history(&self) -> Vec<Action>;
     /// Get the complete history of agent stocks.
-    fn is_alive(&self) -> bool;
+    fn stock_history(&self) -> Vec<Stock>;
     /// Return true if the agent is still alive.
+    fn is_alive(&self) -> bool;
     /// Execture the given action.
     fn act(&mut self, action: Action);
     /// Step the agent forward by one time step.

@@ -92,6 +92,11 @@ impl Stock {
                 new_stock.stock.insert(new_goods_unit, *quantity);
             }
         }
+        for partial_goods_unit in &self.partial_stock {
+            if let Some(new_partial_goods_unit) = partial_goods_unit.step_forward(action) {
+                new_stock.partial_stock.push(new_partial_goods_unit);
+            }
+        }
         new_stock
     }
 
