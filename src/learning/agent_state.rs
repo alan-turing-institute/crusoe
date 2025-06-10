@@ -42,6 +42,7 @@ pub trait DiscrRep<S, L> {
 
 // (4 * 8 * 4) * (leisure + 8[action per good] + trade + credit) = 128 * 11 = 1408
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LevelPair(pub InvLevel, pub InvLevel);
 
 impl From<(InvLevel, InvLevel)> for LevelPair {

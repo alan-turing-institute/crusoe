@@ -84,19 +84,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::hash::Hash;
-
     use super::*;
 
     // AgenteState is now Stock
     // AgentStateItems is now Good
-
     use crate::actions::ActionFlattened as Action;
     use crate::goods::Good as AgentStateItems;
     use crate::learning::agent_state::LevelPair;
     use crate::stock::Stock as AgentState;
-
-    // use crate::agent_state::{AgentState, AgentStateItems, InvLevel};
 
     fn get_test_history() -> History<AgentState, AgentStateItems, LevelPair, Action> {
         History {
@@ -110,52 +105,22 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_history_push() {
-    //     let mut history = get_test_history();
-    //     let sar = SAR::new(
-    //         AgentState {
-    //             food: 0,
-    //             water: 0,
-    //             min_steps_to_food: None,
-    //             min_steps_to_water: None,
-    //             min_steps_to_trader: None, // last_action: None,
-    //         },
-    //         Action::Stationary,
-    //         Reward { val: -1 },
-    //     );
-    //     let sar2 = SAR::new(
-    //         AgentState {
-    //             food: 0,
-    //             water: 0,
-    //             min_steps_to_food: None,
-    //             min_steps_to_water: None,
-    //             min_steps_to_trader: None, // last_action: None,
-    //         },
-    //         Action::Stationary,
-    //         Reward { val: -2 },
-    //     );
-    //     history.push(sar.clone());
+    #[test]
+    fn test_history_push() {
+        let mut history = get_test_history();
+        let sar = SAR::new(AgentState::default(), Action::Leisure, Reward { val: -1 });
+        let sar2 = SAR::new(AgentState::default(), Action::Leisure, Reward { val: -2 });
+        history.push(sar.clone());
+        assert_eq!(history.len(), 2);
+        assert_eq!(history.trajectory.last().unwrap(), &sar);
+        assert_ne!(history.trajectory.last().unwrap(), &sar2);
+    }
 
-    //     assert_eq!(history.len(), 2);
-    //     // Cannot use matches! on struct RHS?
-    //     // assert!(matches!(history.trajectory.last().unwrap(), sar)));
-    //     assert_eq!(history.trajectory.last().unwrap(), &sar);
-    //     assert_ne!(history.trajectory.last().unwrap(), &sar2);
-    // }
-
-    // // #[test]
-    // // fn test_last_state_action() {
-    // //     assert!(matches!(
-    // //         get_test_history().last_state_action(),
-    // //         Some((
-    // //             AgentState {
-    // //                 food: 0,
-    // //                 water: 0,
-    // //                 // last_action: None,
-    // //             },
-    // //             Action::Stationary
-    // //         ))
-    // //     ))
-    // // }
+    #[test]
+    fn test_last_state_action() {
+        assert_eq!(
+            get_test_history().last_state_action(),
+            Some((AgentState::default(), Action::ProduceBerries))
+        )
+    }
 }
