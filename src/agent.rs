@@ -146,6 +146,7 @@ impl Agent for CrusoeAgent {
         let action = self.choose_action();
         // Perform action, which updates the agent's stock
         self.act(action);
+        self.stock.step_forward(action);
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
         self.is_alive = self.consume(1);

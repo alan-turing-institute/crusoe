@@ -14,7 +14,7 @@ impl Stock {
     /// Add a quantify of a good to the stock.
     pub fn add(&mut self, good: Good, quantity: UInt) {
         if let Some(existing_qty) = &self.stock.insert(good, quantity) {
-            &self.stock.insert(good, quantity + *existing_qty);
+            let _ = &self.stock.insert(good, quantity + *existing_qty);
         }
     }
 
@@ -34,7 +34,7 @@ impl Stock {
     }
 
     /// Takes in the current action of the agent and updates the stock accordingly.
-    fn step_forward(&self, action: Action) -> Stock {
+    pub fn step_forward(&self, action: Action) -> Stock {
         let mut new_stock = Stock::default();
         // Degrade all consumer goods by 1 time unit.
         for (good, quantity) in &self.stock {
@@ -77,6 +77,7 @@ impl Stock {
             .next()
     }
 
+    /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
     pub fn next_consumables(&self) -> Vec<(&Good, &u32)> {
         self.stock
             .iter()
@@ -96,5 +97,102 @@ impl Stock {
                 }
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{UInt, actions::Action, goods::Good};
+
+    #[test]
+    fn test_add() {
+        let mut stock = Stock::default();
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            None
+        );
+        stock.add(
+            Good::Berries {
+                remaining_lifetime: 10,
+            },
+            2,
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            Some(&2)
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            None
+        );
+        stock.add(
+            Good::Berries {
+                remaining_lifetime: 10,
+            },
+            3,
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            Some(&5)
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            None
+        );
+        stock.add(
+            Good::Berries {
+                remaining_lifetime: 9,
+            },
+            1,
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            Some(&1)
+        );
+    }
+
+    #[test]
+    fn test_step_forward() {
+        let mut stock = HashMap::<Good, UInt>::new();
+        stock.insert(
+            Good::Berries {
+                remaining_lifetime: 10,
+            },
+            5,
+        );
+        let stock = Stock { stock: stock };
+
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            Some(&5)
+        );
+        let stock = stock.step_forward(Action::ProduceBerries);
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 10
+            }),
+            None
+        );
+        assert_eq!(
+            stock.stock.get(&Good::Berries {
+                remaining_lifetime: 9
+            }),
+            Some(&5)
+        );
     }
 }
