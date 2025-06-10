@@ -10,7 +10,7 @@ use crate::{Int, UInt};
 
 #[enum_dispatch]
 pub trait Agent {
-    fn get_id(&self) -> Int;
+    fn get_id(&self) -> u64;
     fn get_name(&self) -> &str;
     /// The stock of goods currently held by the agent.
     fn stock(&self) -> &Stock;
@@ -35,7 +35,7 @@ pub trait Agent {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CrusoeAgent {
-    id: Int,
+    id: u64,
     stock: Stock,
     is_alive: bool,
     action_history: Vec<Action>,
@@ -43,7 +43,7 @@ pub struct CrusoeAgent {
 }
 
 impl CrusoeAgent {
-    pub fn new(id: Int) -> Self {
+    pub fn new(id: u64) -> Self {
         CrusoeAgent {
             id,
             stock: Stock::default(),
@@ -55,7 +55,7 @@ impl CrusoeAgent {
 }
 
 impl Agent for CrusoeAgent {
-    fn get_id(&self) -> Int {
+    fn get_id(&self) -> u64 {
         todo!()
     }
 
@@ -83,7 +83,8 @@ impl Agent for CrusoeAgent {
     // self can be immutable here.
     fn choose_action(&mut self) -> Action {
         // let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
-        let action = Action::random(&mut StdRng::from_os_rng());
+        // let action = Action::random(&mut StdRng::from_os_rng());
+        let action = Action::random(&mut StdRng::seed_from_u64(self.id));
         self.action_history.push(action);
         action
     }
@@ -110,7 +111,6 @@ impl Agent for CrusoeAgent {
                 outstanding_nutritional_units -= *qty;
             }
         }
-
         // Update stock
         for (good, qty) in stock_change {
             self.stock.remove(&good, qty);
@@ -167,7 +167,7 @@ impl Agent for CrusoeAgent {
         self.is_alive = self.consume(1);
         // Degrade the agent's stock.
         self.stock_history.push(self.stock.clone());
-        self.stock.step_forward(action);
+        self.stock = self.stock.step_forward(action);
     }
 }
 
@@ -184,8 +184,6 @@ pub fn some_agent_fn(x: Int, y: Int) -> Int {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*; // Import the functions from the parent module
 
     #[test]
@@ -196,7 +194,33 @@ mod tests {
     }
 
     #[test]
+    fn test_consume() {
+        let mut agent = CrusoeAgent::new(1);
+        agent.stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            5,
+        );
+        agent.consume(3);
+        // Expected stock after consumption is 2 units of berries
+        // (three units were consumed) with remaining lifetime 10.
+        let mut expected = Stock::default();
+        expected.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            2,
+        );
+        assert_eq!(agent.stock, expected);
+    }
+
+    #[test]
     fn test_step_forward() {
+        // Note: id parameter is the random seed and we assume
+        // the first action it chooses does not affect the stock
         let mut agent = CrusoeAgent::new(1);
         agent.stock.add(
             GoodsUnit {
