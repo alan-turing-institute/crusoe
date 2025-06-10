@@ -9,6 +9,31 @@ pub enum Action {
     Leisure,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ActionFlattened {
+    ProduceBerries,
+    ProduceFish,
+    ProduceBasket,
+    ProduceSpear,
+    ProduceSmoker,
+    ProduceBoat,
+    ProduceTimber,
+    ProduceAxe,
+    Leisure,
+}
+
+impl From<Action> for ActionFlattened {
+    fn from(action: Action) -> Self {
+        match action {
+            Action::ProduceGood(Good::Berries) => ActionFlattened::ProduceBerries,
+            Action::ProduceGood(Good::Fish) => ActionFlattened::ProduceFish,
+            Action::ProduceGood(Good::Basket) => ActionFlattened::ProduceBasket,
+            Action::ProduceGood(Good::Spear) => ActionFlattened::ProduceSpear,
+            _ => ActionFlattened::Leisure,
+        }
+    }
+}
+
 impl Action {
     pub fn random<R: Rng + ?Sized>(rng: &mut R) -> Self {
         match rng.random_range(0..=1) {
