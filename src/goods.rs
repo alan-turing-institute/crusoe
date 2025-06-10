@@ -204,9 +204,10 @@ impl GoodsUnit {
         }
     }
 
+    /// Degrade this good by one time step.
     pub fn step_forward(&self, action: Action) -> Option<Self> {
         match self.good.is_consumer() {
-            // If the good exists in the stock and is a consumer good, degrade it.
+            // If this good exists in the stock and is a consumer good, degrade it.
             true => {
                 if self.remaining_lifetime > 1 {
                     return Some(GoodsUnit {
@@ -217,8 +218,8 @@ impl GoodsUnit {
                 // If the remaining_lifetime is 0 (after the step), return None.
                 None
             }
-            // If the good is a capital good and the action makes use of it,
-            // degrade its remaining lifetime. Otherwise return it unchanged.
+            // If this is a capital good and the action makes use of it, degrade its
+            // remaining lifetime. Otherwise return it unchanged.
             false => match action {
                 Action::ProduceGood(produced_good) => {
                     if produced_good.is_produced_using(self.good) {
@@ -261,6 +262,59 @@ impl PartialGoodsUnit {
         self.time_to_completion = self.time_to_completion - 1
     }
 
-    // TODO NEXT: Discontinuities in production must be penalised!
-    // pub fn step_forward(&mut self, action: Action) -> Option<Self> {}
+    // Step forward this partially complete goods unit and penalise any
+    // discontinuity in the production process.
+    pub fn step_forward(&self, action: Action) -> Option<PartialGoodsUnit> {
+        // If the action is to continue production, return the partial good
+        // unchanged (as production was incremented when the agent acted).
+        match action {
+            Action::ProduceGood(good) => {
+                if good == self.good {
+                    return Some(*self);
+                }
+            }
+            _ => {}
+        }
+        // If the action is *not* to continue production, extend
+        // the remaining time to completion by 1 time unit.
+        let time_to_completion = self.time_to_completion + 1;
+        let max_time_to_completion = self
+            .good
+            .multiple_timesteps_to_complete()
+            .expect("PartialGoodsUnit must take multiple timesteps to complete");
+
+        if self.time_to_completion == max_time_to_completion {
+            return None;
+        }
+        Some(PartialGoodsUnit {
+            good: self.good,
+            time_to_completion: time_to_completion,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::goods::{Good, GoodsUnit};
+
+    #[test]
+    fn test_step_forward() {
+        let good = GoodsUnit {
+            good: Good::Berries,
+            remaining_lifetime: 3,
+        };
+        assert_eq!(good.remaining_lifetime, 3);
+
+        let action = Action::Leisure;
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 2);
+
+        let action = Action::ProduceGood(Good::Berries);
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 1);
+
+        let good = good.step_forward(action);
+        assert!(good.is_none());
+    }
 }
