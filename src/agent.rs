@@ -1,5 +1,3 @@
-use std::i32;
-
 use enum_dispatch::enum_dispatch;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
@@ -81,7 +79,7 @@ impl Agent for CrusoeAgent {
                 if self.stock.contains(Good::Basket) {
                     return 8;
                 }
-                return 4;
+                4
             }
             Good::Basket => 1,
             Good::Fish => {
@@ -89,7 +87,7 @@ impl Agent for CrusoeAgent {
                 if self.stock.contains(Good::Spear) {
                     return 10;
                 }
-                return 2;
+                2
             }
             Good::Spear => 1,
         }
@@ -99,7 +97,7 @@ impl Agent for CrusoeAgent {
     // self can be immutable here.
     fn choose_action(&mut self) -> Action {
         let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
-        self.action_history.push(action.into());
+        self.action_history.push(action);
         action
     }
 
@@ -126,11 +124,11 @@ impl Agent for CrusoeAgent {
             // If qty_remaining < nutritional_units, recursively call consume()
             if *qty > outstanding_nutritional_units {
                 // return self.consume(nutritional_units - qty);
-                stock_change.push((good.clone(), outstanding_nutritional_units));
+                stock_change.push((*good, outstanding_nutritional_units));
                 outstanding_nutritional_units = 0;
                 break;
             } else {
-                stock_change.push((good.clone(), *qty));
+                stock_change.push((*good, *qty));
                 outstanding_nutritional_units -= *qty;
             }
         }
@@ -211,9 +209,4 @@ impl AgentType {
             AgentType::Crusoe(agent) => agent.reward_history().clone(),
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*; // Import the functions from the parent module
 }

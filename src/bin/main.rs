@@ -1,10 +1,7 @@
-use std::collections::BTreeMap;
-
 use crusoe::{
     actions::ActionFlattened as Action,
-    agent,
     goods::Good,
-    learning::{agent_state::LevelPair, history::History, tabular_rl::SARSAModel},
+    learning::{agent_state::LevelPair, tabular_rl::SARSAModel},
     simulation::Simulation,
     stock::Stock,
 };
@@ -28,8 +25,8 @@ fn main() {
         println!("Time: {}, Agents: {}", sim.time, sim.agents.len());
         println!("Actions:  {0:#?}", sim.agents[0]);
         sim.time += 1;
-        // TODO: add agent history
 
-        model.step(sim.time as i32, &mut sim.agent_hist);
+        // Update model given agent history
+        model.step(sim.time as i32, &sim.agent_hist);
     }
 }
