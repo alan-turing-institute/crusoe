@@ -4,7 +4,7 @@ use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
 use crate::actions::Action;
-use crate::goods::{Good, GoodsUnit};
+use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
 use crate::stock::Stock;
 use crate::{Int, UInt};
 
@@ -15,7 +15,8 @@ pub trait Agent {
     /// The stock of goods currently held by the agent.
     fn stock(&self) -> &Stock;
     /// The marginal productivity of the agent, given their current stock.
-    fn productivity(&self, good: Good) -> UInt;
+    fn productivity(&self, good: Good) -> Productivity;
+    // fn productivity(&self, good: Good) -> (UInt, bool);
     /// The agent's choice of action in the next time step.
     fn choose_action(&mut self) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
@@ -63,26 +64,15 @@ impl Agent for CrusoeAgent {
     }
 
     // TODO: Some capital goods take multiple time units to produce.
-    fn productivity(&self, good: Good) -> UInt {
+    /// Returns the number of units of the good produced per day, given the
+    /// agent's existing stock. The boolean flag indicates whether the
+    /// integer in the first slot should be interpreted as a fraction.
+    /// e.g. (5, false) indicates  5 units can be produced in one day,
+    /// while (5, true) indicates that a single unit takes 5 days to produce.
+    fn productivity(&self, good: Good) -> Productivity {
         // TODO: make configurable.
-        match good {
-            Good::Berries => {
-                // Productivity of berries is increased by access to a basket.
-                if self.stock.contains(Good::Basket) {
-                    return 8;
-                }
-                return 4;
-            }
-            Good::Basket => 1,
-            Good::Fish => {
-                // Productivity of fish is increased by access to a spear.
-                if self.stock.contains(Good::Spear) {
-                    return 10;
-                }
-                return 2;
-            }
-            Good::Spear => 1,
-        }
+        // TODO: can modify default productivity for different agents (for specialisation).
+        good.default_productivity(&self.stock)
     }
 
     // TODO: consider moving teh action_history update into act method, so
@@ -138,8 +128,22 @@ impl Agent for CrusoeAgent {
     fn act(&mut self, action: Action) {
         match action {
             Action::ProduceGood(good) => {
-                let qty = self.productivity(good);
-                self.stock.add(GoodsUnit::new(&good), qty);
+                let productivity = self.productivity(good);
+                match productivity {
+                    Productivity::Immediate(qty) => self.stock.add(GoodsUnit::new(&good), qty),
+                    Productivity::Delayed(_) => {
+                        if let Some(mut partial_good) = self.stock.get_partial(good) {
+                            // If a partial good already exists, do the next step of production.
+                            partial_good.increment_production();
+                        } else {
+                            // Otherwise create a new partial good.
+                            self.stock.add_partial(PartialGoodsUnit::new(&good).expect(
+                                "Delayed productivity implies multiple timesteps to produce.",
+                            ))
+                        }
+                    }
+                    Productivity::None => {} // Wasted action.
+                }
             }
             Action::Leisure => (),
         }
