@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
@@ -22,10 +24,21 @@ impl From<(RemainingLevel, InvLevel)> for LevelPair {
 }
 impl DiscrRep<Good, LevelPair> for Stock {
     fn representation(&self) -> Vec<(Good, LevelPair)> {
-        self.discretise()
+        let hm: HashMap<Good, LevelPair> = self
+            .discretise()
             .stock
             .into_iter()
             .map(|(good, level)| (good.good, LevelPair::from((good.remaining_lifetime, level))))
+            .collect();
+        Good::iter()
+            .map(|good| {
+                (
+                    good,
+                    hm.get(&good)
+                        .cloned()
+                        .unwrap_or(LevelPair(RemainingLevel::Critical, InvLevel::Critical)),
+                )
+            })
             .collect()
     }
 }
