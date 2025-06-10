@@ -1,5 +1,6 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumIter;
 
 use crate::goods::Good;
 
@@ -9,7 +10,7 @@ pub enum Action {
     Leisure,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter)]
 pub enum ActionFlattened {
     ProduceBerries,
     ProduceFish,

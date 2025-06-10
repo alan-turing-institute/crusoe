@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumIter;
 
 use crate::{UInt, actions::Action, learning::agent_state::InvLevel};
 
 // A good in the abstract (as opposed to particular units of a good).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter)]
 pub enum Good {
     Berries,
     Fish,

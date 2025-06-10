@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::map::Iter;
 use strum_macros::EnumIter;
 
 use crate::stock::Stock as AgentState;
@@ -12,6 +13,7 @@ use crate::{
     goods::{Good, GoodsUnit, GoodsUnitLevel},
     stock::Stock,
 };
+use strum::IntoEnumIterator;
 
 pub trait DiscrRep<S, L> {
     fn representation(&self) -> Vec<(S, L)>;
@@ -42,7 +44,7 @@ pub trait DiscrRep<S, L> {
 
 // (4 * 8 * 4) * (leisure + 8[action per good] + trade + credit) = 128 * 11 = 1408
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LevelPair(pub InvLevel, pub InvLevel);
 
 impl From<(InvLevel, InvLevel)> for LevelPair {
@@ -161,4 +163,11 @@ pub enum InvLevel {
     Low,
     Medium,
     High,
+}
+
+impl LevelPair {
+    /// Iterate over all possible combinations of InvLevel for LevelPair
+    pub fn iter() -> impl Iterator<Item = LevelPair> {
+        InvLevel::iter().flat_map(|a| InvLevel::iter().map(move |b| LevelPair::from((a, b))))
+    }
 }

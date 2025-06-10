@@ -1,32 +1,38 @@
 use crate::UInt;
+use crate::actions::ActionFlattened as Action;
 use crate::agent::{Agent, AgentType, CrusoeAgent};
 use crate::config::{Config, RLConfig};
+use crate::goods::Good;
+use crate::learning::agent_state::LevelPair;
+use crate::learning::tabular_rl::SARSAModel;
 use serde::{Deserialize, Serialize};
 use std::vec::Vec;
 
-#[derive(Serialize, Deserialize, Debug)]
+// TODO: add RL algorithm
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Simulation {
     pub time: UInt,
     pub agents: Vec<AgentType>,
     pub config: Config,
 }
 
-impl Default for Simulation {
-    fn default() -> Self {
-        Simulation {
-            time: 0,
-            agents: Vec::new(),
-            config: Config::default(),
-        }
-    }
-}
-
 impl Simulation {
     pub fn new() -> Self {
+        let config = Config::default();
+        // TODO: add n_agents to config
+        // let num_agents = 10;
+        // let multi_policy = false;
+        // let model = SARSAModel::new(
+        //     (0..num_agents).map(|n| n.into()).collect(),
+        //     Good::iter().collect::<Vec<Good>>(),
+        //     LevelPair::iter().collect::<Vec<LevelPair>>(),
+        //     Action::iter().collect::<Vec<Action>>(),
+        //     multi_policy,
+        // );
         Simulation {
             time: 0,
             agents: vec![AgentType::Crusoe(CrusoeAgent::new(1))], // Initialize with one Crusoe agent
-            config: Config::default(), // Default value, can be overridden
+            config, // Default value, can be overridden
         }
     }
 
