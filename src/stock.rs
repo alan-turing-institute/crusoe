@@ -81,17 +81,21 @@ impl Stock {
         None
     }
 
-    // IMP TODO NEXT!! use is_material() to handle materials differently.
-    //
     /// Takes in the current action of the agent and updates the stock accordingly.
     pub fn step_forward(&self, action: Action) -> Stock {
         let mut new_stock = Stock::default();
-        // Degrade all consumer goods by 1 time unit.
+        // Degrade all goods by 1 time unit.
         for (goods_unit, quantity) in &self.stock {
             if let Some(new_goods_unit) = goods_unit.step_forward(action) {
-                new_stock.stock.insert(new_goods_unit, *quantity);
+                // If the goods unit is a material, remove one unit of it.
+                let mut new_quantity = *quantity;
+                if goods_unit.good.is_material() {
+                    new_quantity = new_quantity - 1;
+                }
+                new_stock.stock.insert(new_goods_unit, new_quantity);
             }
         }
+        // Degrade all partial goods by 1 time unit.
         for partial_goods_unit in &self.partial_stock {
             if let Some(new_partial_goods_unit) = partial_goods_unit.step_forward(action) {
                 new_stock.partial_stock.push(new_partial_goods_unit);

@@ -204,9 +204,10 @@ impl GoodsUnit {
         }
     }
 
+    /// Degrade this good by one time step.
     pub fn step_forward(&self, action: Action) -> Option<Self> {
         match self.good.is_consumer() {
-            // If the good exists in the stock and is a consumer good, degrade it.
+            // If this good exists in the stock and is a consumer good, degrade it.
             true => {
                 if self.remaining_lifetime > 1 {
                     return Some(GoodsUnit {
@@ -217,8 +218,8 @@ impl GoodsUnit {
                 // If the remaining_lifetime is 0 (after the step), return None.
                 None
             }
-            // If the good is a capital good and the action makes use of it,
-            // degrade its remaining lifetime. Otherwise return it unchanged.
+            // If this is a capital good and the action makes use of it, degrade its
+            // remaining lifetime. Otherwise return it unchanged.
             false => match action {
                 Action::ProduceGood(produced_good) => {
                     if produced_good.is_produced_using(self.good) {
