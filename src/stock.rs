@@ -6,12 +6,13 @@ use serde::{Deserialize, Serialize};
 use crate::{
     UInt,
     actions::Action,
-    goods::{Good, GoodsUnit},
+    goods::{Good, GoodsUnit, PartialGoodsUnit},
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stock {
     pub stock: HashMap<GoodsUnit, UInt>,
+    pub partial_stock: Vec<PartialGoodsUnit>,
 }
 
 impl Stock {
@@ -20,6 +21,14 @@ impl Stock {
         if let Some(existing_qty) = &self.stock.insert(good, quantity) {
             let _ = &self.stock.insert(good, quantity + *existing_qty);
         }
+    }
+
+    /// Add a unit of a partially complete good to the stock.
+    pub fn add_partial(&mut self, good: PartialGoodsUnit) {
+        if let Some(_) = self.get_partial(good.good) {
+            panic!("Cannot add multiple partial units of the same good.")
+        }
+        let _ = &self.partial_stock.push(good);
     }
 
     /// Remove a units of a good from the stock.
@@ -47,6 +56,18 @@ impl Stock {
         false
     }
 
+    /// Returns a partial unit of the given good, if the stock contains one.
+    pub fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit> {
+        for partial_unit in &self.partial_stock {
+            if partial_unit.good == good {
+                return Some(partial_unit.clone());
+            }
+        }
+        None
+    }
+
+    // IMP TODO NEXT!! use is_material() to handle materials differently.
+    //
     /// Takes in the current action of the agent and updates the stock accordingly.
     pub fn step_forward(&self, action: Action) -> Stock {
         let mut new_stock = Stock::default();
@@ -182,7 +203,10 @@ mod tests {
             },
             1,
         );
-        let stock = Stock { stock: stock };
+        let stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
 
         assert_eq!(
             stock.stock.get(&GoodsUnit {
