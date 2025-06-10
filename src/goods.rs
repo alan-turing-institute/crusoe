@@ -56,6 +56,7 @@ impl Good {
                 // at every timestep, the productivity is zero unless they already
                 // have enough input materials.
                 for required_input in self.required_inputs() {
+                    // IMP TODO: check sufficient quantity of inputs.
                     if !stock.contains(required_input) {
                         return Productivity::None;
                     }
@@ -260,6 +261,6 @@ impl PartialGoodsUnit {
         self.time_to_completion = self.time_to_completion - 1
     }
 
-    // TODO NEXT!
+    // TODO NEXT: Discontinuities in production must be penalised!
     // pub fn step_forward(&mut self, action: Action) -> Option<Self> {}
 }
