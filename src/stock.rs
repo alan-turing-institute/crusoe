@@ -11,8 +11,23 @@ use crate::{
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stock {
+    #[serde(serialize_with = "serialize_hm")]
     pub stock: HashMap<GoodsUnit, UInt>,
     pub partial_stock: Vec<PartialGoodsUnit>,
+}
+
+fn serialize_hm<S>(hm: &HashMap<GoodsUnit, UInt>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::ser::SerializeSeq;
+    let mut seq = serializer.serialize_seq(Some(hm.len()))?;
+    for (k, v) in hm.iter() {
+        if *v > 0 {
+            seq.serialize_element(&(k, v))?;
+        }
+    }
+    seq.end()
 }
 
 impl Stock {
@@ -48,7 +63,7 @@ impl Stock {
 
     /// Returns true if the stock contains any units of the given good.
     pub fn contains(&self, good: Good) -> bool {
-        for (goods_unit, _) in &self.stock {
+        for (goods_unit, _) in self.stock.iter() {
             if goods_unit.good == good {
                 return true;
             }
@@ -60,7 +75,7 @@ impl Stock {
     pub fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit> {
         for partial_unit in &self.partial_stock {
             if partial_unit.good == good {
-                return Some(partial_unit.clone());
+                return Some(*partial_unit);
             }
         }
         None

@@ -21,10 +21,12 @@ pub trait Agent {
     fn choose_action(&mut self) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
     fn consume(&mut self, nutritional_units: UInt) -> bool;
+    fn action_history(&self) -> Vec<Action>;
     /// Get the complete history of agent actions.
-    fn history(&self) -> Vec<Action>;
-    /// Return true if the agent is still alive.
+    fn stock_history(&self) -> Vec<Stock>;
+    /// Get the complete history of agent stocks.
     fn is_alive(&self) -> bool;
+    /// Return true if the agent is still alive.
     /// Execture the given action.
     fn act(&mut self, action: Action);
     /// Step the agent forward by one time step.
@@ -37,6 +39,7 @@ pub struct CrusoeAgent {
     stock: Stock,
     is_alive: bool,
     action_history: Vec<Action>,
+    stock_history: Vec<Stock>,
 }
 
 impl CrusoeAgent {
@@ -46,6 +49,7 @@ impl CrusoeAgent {
             stock: Stock::default(),
             is_alive: true,
             action_history: vec![],
+            stock_history: vec![],
         }
     }
 }
@@ -78,7 +82,8 @@ impl Agent for CrusoeAgent {
     // TODO: consider moving teh action_history update into act method, so
     // self can be immutable here.
     fn choose_action(&mut self) -> Action {
-        let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
+        // let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
+        let action = Action::random(&mut StdRng::from_os_rng());
         self.action_history.push(action);
         action
     }
@@ -117,10 +122,13 @@ impl Agent for CrusoeAgent {
         true
     }
 
-    fn history(&self) -> Vec<Action> {
+    fn action_history(&self) -> Vec<Action> {
         self.action_history.clone()
     }
 
+    fn stock_history(&self) -> Vec<Stock> {
+        self.stock_history.clone()
+    }
     fn is_alive(&self) -> bool {
         self.is_alive
     }
@@ -154,11 +162,12 @@ impl Agent for CrusoeAgent {
         let action = self.choose_action();
         // Perform action, which updates the agent's stock
         self.act(action);
-        // Degrade the agent's stock.
-        self.stock.step_forward(action);
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
         self.is_alive = self.consume(1);
+        // Degrade the agent's stock.
+        self.stock_history.push(self.stock.clone());
+        self.stock.step_forward(action);
     }
 }
 

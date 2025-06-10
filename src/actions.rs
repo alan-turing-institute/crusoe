@@ -11,9 +11,16 @@ pub enum Action {
 
 impl Action {
     pub fn random<R: Rng + ?Sized>(rng: &mut R) -> Self {
-        match rng.random_range(0..=1) {
-            0 => Action::ProduceGood(Good::Berries),
-            1 => Action::Leisure,
+        match rng.random_range(0..=8) {
+            0 => Action::Leisure,
+            1 => Action::ProduceGood(Good::Berries),
+            2 => Action::ProduceGood(Good::Fish),
+            3 => Action::ProduceGood(Good::Basket),
+            4 => Action::ProduceGood(Good::Spear),
+            5 => Action::ProduceGood(Good::Smoker),
+            6 => Action::ProduceGood(Good::Boat),
+            7 => Action::ProduceGood(Good::Timber),
+            8 => Action::ProduceGood(Good::Axe),
             _ => unreachable!(),
         }
     }
