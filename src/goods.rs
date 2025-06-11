@@ -13,7 +13,7 @@ pub enum Productivity {
 
 impl Productivity {
     /// Returns the productivity per unit time.
-    pub fn per_unit(&self) -> Option<f32> {
+    pub fn per_unit_time(&self) -> Option<f32> {
         match self {
             Productivity::Immediate(quantity) => Some(*quantity as f32),
             Productivity::Delayed(interval) => Some((1 as f32) / (*interval as f32)),
