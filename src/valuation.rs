@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
@@ -43,24 +41,35 @@ impl RationalAgent {
             Action::ProduceGood(good) => Some(good),
             Action::Leisure => None,
         };
-        if good.is_none() {
-            return 0.0;
+        match good {
+            Some(good) => match good.is_consumer() {
+                true => self.marginal_benefit_of_producing_consumer_goods(good),
+                false => todo!(),
+            },
+            None => 0.0,
         }
-        // let goods_unit = GoodsUnit::new(good.unwrap());
-        let good = good.unwrap();
-        let productivity_per_unit_time = self.productivity(good).per_unit_time();
-        if productivity_per_unit_time.is_none() {
-            return 0.0;
+    }
+
+    /// Returns the marginal benefit to the agent of producing a consumer good,
+    /// given the existing stock.
+    fn marginal_benefit_of_producing_consumer_goods(&self, good: &Good) -> f32 {
+        if !good.is_consumer() {
+            panic!("Expected consumer good.")
         }
-        let productivity_per_unit_time = productivity_per_unit_time.unwrap();
-        let mut count: f32 = 1.0;
+        let productivity = match self.productivity(good) {
+            crate::goods::Productivity::Immediate(quantity) => quantity,
+            _ => {
+                panic!("All consumer goods have immediate productivity.")
+            }
+        };
+        let mut count = 0;
         let mut sum: f32 = 0.0;
         let mut dummy_agent = self.clone();
-        while count < productivity_per_unit_time {
+        while count != productivity {
             // TODO: discounting.
             sum = sum + dummy_agent.marginal_unit_value(good);
             dummy_agent.acquire(GoodsUnit::new(good), 1);
-            count = count + 1.0;
+            count = count + 1;
         }
         sum
     }
@@ -69,17 +78,13 @@ impl RationalAgent {
     ///
     /// We define the marginal unit value of a consumer good $g$, given existing stock $S$, as
     /// the min amount of time required to produce equivalent additional sustenance to 1 additional
-    /// unit of g (given stock S).
-    /// If 1 additional unit of g (given stock S) produces no additional sustenance, it's marginal
-    /// unit value is zero.
-    /// IMP TODO: replace goods_unit with good.!!!!!!!!!
-    // fn marginal_unit_value(&self, goods_unit: &GoodsUnit) -> f32 {
+    /// unit of g (given stock S). If 1 additional unit of g (given stock S) produces no additional
+    /// sustenance, it's marginal unit value is zero.
     fn marginal_unit_value(&self, good: &Good) -> f32 {
         // 1. Count additional days of sustenance from 1 additional unit of g
-        // TODO: need this to be non-zero else the marginal unit value will be zero.
-        // SHOULD IT BE ZERO IN THIS CASE? IF SO, JUST RETURN ZERO HERE.
-        // THIS COULD BE FINE BECAUSE IN PRACTICE GOODS WILL BE ACQUIRED IN QUANTITIES GREATER THAN 1 UNIT.
         let additional_sustenance = self.additional_sustenance(good);
+        // If the additional sustenance is zero, the value of the marginal unit is also zero.
+        // (In practice, goods will typically be considered in quantities greater than 1 unit.)
         if additional_sustenance == 0 {
             return 0.0;
         }
@@ -93,7 +98,7 @@ impl RationalAgent {
         // Time to produce 1 unit of the good is (1 / amount produced in one day's production).
         let mut min_equiv = (1 as f32) / productivity_per_unit_time.unwrap();
 
-        // 3. For every conumer good, compute the time taken to produce the same number of
+        // 3. For every consumer good, compute the time taken to produce the same number of
         // days of sustenance.
         for alt_good in Good::iter() {
             // Ignore the good itself as we alreday initialised min_equiv for it.
@@ -103,19 +108,17 @@ impl RationalAgent {
             if let Some(t) =
                 self.time_to_equiv_sustenance(alt_good, additional_sustenance, min_equiv)
             {
-                // println!("here t: {:?}", t);
-                // println!("here min_equiv: {:?}", min_equiv);
                 if t < min_equiv {
                     min_equiv = t;
                 }
             }
         }
         // 3. Return the minium equivalent.
-        // println!("final min_equiv: {:?}", min_equiv);
         min_equiv
     }
 
-    // Returns None if alt_good is a capital good of if the max limit is exceeded.
+    /// Returns the time taken to produce enough of an alternative good to reach a target measure
+    /// of sustenance. Returns None if alt_good is a capital good or if the max limit is exceeded.
     fn time_to_equiv_sustenance(
         &self,
         alt_good: Good,
@@ -138,27 +141,12 @@ impl RationalAgent {
                         count_days += 1;
 
                         // Compute the new survival time with the extra units of the alternative goods.
-                        // PROBLEM: the new survial time is an integer but the "newly produced" units of the alt good
-                        // might (probably will!) exceed that required for one day's consumption.
-                        // SOLUTION: so we need to take into account the productivity in the result calculation.
                         let new_survival_time = dummy_agent.count_timesteps_till_death(None);
 
                         // If the additional sustenance exceeds the target sustenance, return
                         // the equivalent day count necessasry to produce the additional goods.
                         let additional_survival = new_survival_time - survival_time;
-
-                        // println!("here alt_good {:?}", alt_good);
-                        // println!("here productivity {:?}", productivity);
-                        // println!("here count_days {:?}", count_days);
-                        // println!("here additional_survival {:?}", additional_survival);
-                        // println!("here target_sustenance {:?}", target_sustenance);
-                        // println!("here max {:?}", max);
-
                         if additional_survival > target_sustenance {
-                            // return Some(
-                            //     (count_days as f32)
-                            //         / (additional_survival as f32 / target_sustenance as f32),
-                            // );
                             return Some((count_days as f32) / productivity);
                         }
                         // If the max limit is already exceeded, return None
@@ -174,16 +162,11 @@ impl RationalAgent {
         }
     }
 
-    /// Counts the number of additional days of survival provided by the additional goods unit.
+    /// Counts the number of additional days of survival provided by one additional unit of a good.
     fn additional_sustenance(&self, good: &Good) -> u32 {
         let survival_days = self.count_timesteps_till_death(None);
         let additional_survival_days = &self.count_timesteps_till_death(Some(&good));
         additional_survival_days - survival_days
-        // let extra_count = additional_survival_days - survival_days;
-        // if extra_count == 0 {
-        //     return 0.0;
-        // }
-        // (extra_count as f32) / (self.daily_nutrition as f32)
     }
 
     /// Counts the number of timesteps that the agent can survive with the current
@@ -195,14 +178,11 @@ impl RationalAgent {
             dummy_agent.acquire(GoodsUnit::new(good), 1);
         }
         let mut count = 0;
-        // while dummy_agent.is_alive() {
         loop {
             let action = Action::Leisure;
-            // let is_alive = dummy_agent.consume(self.daily_nutrition);
             if !dummy_agent.consume(self.daily_nutrition) {
                 break; // Break out as soon as death happens.
             }
-            // dummy_agent.set_liveness(is_alive);
             dummy_agent.set_stock(dummy_agent.stock().step_forward(action));
             count += 1;
         }
@@ -283,6 +263,22 @@ mod tests {
         // Given an initially empty stock, the marginal value of the first two units of berries
         // is zero. The third unit has a marginal value of 1/4. The fourth unit has a marginal
         // value of zero. So the marginal benefit of the action to produce berries is 1/4.
+        assert_eq!(agent.marginal_benefit_of_action(&action), 0.25);
+
+        // Start again with empty stock.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        let action = Action::ProduceGood(Good::Fish);
+
+        // Given an initially empty stock, the marginal value of the first two units of fish
+        // is zero. So the marginal benefit of the action to produce fish is 0.
+        assert_eq!(agent.marginal_benefit_of_action(&action), 0.0);
+
+        agent.acquire(GoodsUnit::new(&Good::Berries), 1);
+
+        // Given an initial stock of 1 unit of berries, the marginal value of the first unit
+        // of fish is zero but the value of the second is 1/4. So the marginal benefit of the
+        // action to produce fish is 1/4.
         assert_eq!(agent.marginal_benefit_of_action(&action), 0.25);
     }
 
