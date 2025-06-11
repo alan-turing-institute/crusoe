@@ -98,9 +98,11 @@ impl Stock {
                         remaining_lifetime,
                     },
                     qty,
-                ) if *qty >= config.agent.inv_level_low && *qty < config.agent.inv_level_med => {
+                    // ) if *qty >= config.agent.inv_level_low && *qty < config.agent.inv_level_med => {
+                ) if *qty < config.agent.inv_level_med => {
                     match *remaining_lifetime {
-                        x if x < config.agent.inv_level_low => {
+                        // x if x < config.agent.inv_level_low => {
+                        _x => {
                             ds.insert(
                                 GoodsUnitLevel::new(*good, RemainingLevel::Critical),
                                 InvLevel::Low,
@@ -133,9 +135,11 @@ impl Stock {
                         remaining_lifetime,
                     },
                     qty,
-                ) if *qty >= config.agent.inv_level_med && *qty < config.agent.inv_level_high => {
+                    // ) if *qty >= config.agent.inv_level_med && *qty < config.agent.inv_level_high => {
+                ) if *qty < config.agent.inv_level_high => {
                     match *remaining_lifetime {
-                        x if x < config.agent.inv_level_low => {
+                        // x if x < config.agent.inv_level_low => {
+                        _x => {
                             ds.insert(
                                 GoodsUnitLevel::new(*good, RemainingLevel::Critical),
                                 InvLevel::Medium,
@@ -169,7 +173,8 @@ impl Stock {
                     },
                     qty,
                 ) if *qty >= config.agent.inv_level_high => match *remaining_lifetime {
-                    x if x < config.agent.inv_level_low => {
+                    // x if x < config.agent.inv_level_low => {
+                    _x => {
                         ds.insert(
                             GoodsUnitLevel::new(*good, RemainingLevel::Critical),
                             InvLevel::High,
