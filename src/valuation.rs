@@ -33,11 +33,12 @@ impl RationalAgent {
         }
     }
 
-    /// Returns the marginal benefit to the agent of the product of the given action, given the stock.
+    /// Returns the marginal benefit to the agent of the product of the specified action,
+    /// given the existing stock.
     ///
     /// We define the marginal benefit of an action to produce a consumer good $g$, given existing
     /// stock $S$, as the (discounted) sum of the marginal values of the additional units.
-    fn marginal_benefit_of_product(&self, action: &Action) -> f32 {
+    fn marginal_benefit_of_action(&self, action: &Action) -> f32 {
         let good = match action {
             Action::ProduceGood(good) => Some(good),
             Action::Leisure => None,
@@ -52,15 +53,16 @@ impl RationalAgent {
             return 0.0;
         }
         let productivity_per_unit_time = productivity_per_unit_time.unwrap();
-        let count = 0;
+        let mut count: f32 = 1.0;
         let mut sum: f32 = 0.0;
         let mut dummy_agent = self.clone();
-        while (count as f32) < productivity_per_unit_time {
+        while count < productivity_per_unit_time {
+            // TODO: discounting.
             sum = sum + dummy_agent.marginal_unit_value(good);
             dummy_agent.acquire(GoodsUnit::new(good), 1);
+            count = count + 1.0;
         }
-
-        todo!()
+        sum
     }
 
     /// Returns the marginal valuation of the goods unit, given the stock.
@@ -270,6 +272,19 @@ impl Agent for RationalAgent {
 mod tests {
     use super::*;
     use crate::goods::{Good, GoodsUnit};
+
+    #[test]
+    fn test_marginal_benefit_of_action() {
+        let daily_nutrition = 3;
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        let action = Action::ProduceGood(Good::Berries);
+
+        // Given an initially empty stock, the marginal value of the first two units of berries
+        // is zero. The third unit has a marginal value of 1/4. The fourth unit has a marginal
+        // value of zero. So the marginal benefit of the action to produce berries is 1/4.
+        assert_eq!(agent.marginal_benefit_of_action(&action), 0.25);
+    }
 
     #[test]
     fn test_marginal_unit_value() {
