@@ -4,44 +4,19 @@ use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
 use crate::actions::{Action, ActionFlattened};
+use crate::agent::Agent;
 use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
 use crate::learning::agent_state::DiscrRep;
 use crate::learning::reward::Reward;
-use crate::learning::learning_agent::LearningAgent;
 use crate::stock::Stock;
 use crate::{Model, UInt};
 
-#[enum_dispatch]
-pub trait Agent {
-    fn get_id(&self) -> u64;
-    fn get_name(&self) -> &str;
-    /// The stock of goods currently held by the agent.
-    fn stock(&self) -> &Stock;
-    /// The marginal productivity of the agent, given their current stock.
-    fn productivity(&self, good: Good) -> Productivity;
-    // fn productivity(&self, good: Good) -> (UInt, bool);
-    /// The agent's choice of action in the next time step.
-    fn choose_action(&mut self) -> Action;
-    /// The agent's choice of action in the next time step.
-    fn choose_action_with_model(&mut self, model: &Model) -> Action;
-    /// Consume nutritional units for one time step and return false if insufficient were unavailable.
-    fn consume(&mut self, nutritional_units: UInt) -> bool;
-    /// Get the complete history of agent actions.
-    fn action_history(&self) -> Vec<Action>;
-    /// Get the complete history of agent stocks.
-    fn stock_history(&self) -> Vec<Stock>;
-    /// Get the reward history.
-    fn reward_history(&self) -> Vec<Reward>;
-    /// Return true if the agent is still alive.
-    fn is_alive(&self) -> bool;
-    /// Execture the given action.
-    fn act(&mut self, action: Action);
-    /// Step the agent forward by one time step.
-    fn step_forward(&mut self, action: Option<Action>);
-}
+
+// LearningAgent is currently just a clone of CrusoeAgent. The idea would
+// be to have each agent type in its own module (or sub-directory)
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CrusoeAgent {
+pub struct LearningAgent {
     pub id: u64,
     pub stock: Stock,
     pub is_alive: bool,
@@ -50,9 +25,9 @@ pub struct CrusoeAgent {
     pub reward_history: Vec<Reward>,
 }
 
-impl CrusoeAgent {
+impl LearningAgent {
     pub fn new(id: u64) -> Self {
-        CrusoeAgent {
+        LearningAgent {
             id,
             stock: Stock::default(),
             is_alive: true,
@@ -63,13 +38,13 @@ impl CrusoeAgent {
     }
 }
 
-impl Agent for CrusoeAgent {
+impl Agent for LearningAgent {
     fn get_id(&self) -> u64 {
         todo!()
     }
 
     fn get_name(&self) -> &str {
-        "Crusoe"
+        "LearningAgent"
     }
 
     fn stock(&self) -> &Stock {
@@ -211,85 +186,5 @@ impl Agent for CrusoeAgent {
 
     fn reward_history(&self) -> Vec<Reward> {
         self.reward_history.clone()
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[enum_dispatch(Agent)]
-pub enum AgentType {
-    Crusoe(CrusoeAgent),
-    Rl(LearningAgent),
-}
-
-impl AgentType {
-    pub fn action_history(&self) -> Vec<ActionFlattened> {
-        match self {
-            AgentType::Crusoe(agent) => agent.action_history.iter().map(|a| (*a).into()).collect(),
-            AgentType::Rl(agent) => agent.action_history.iter().map(|a| (*a).into()).collect(),
-        }
-    }
-
-    pub fn reward_history(&self) -> Vec<Reward> {
-        match self {
-            AgentType::Crusoe(agent) => agent.reward_history().clone(),
-            AgentType::Rl(agent) => agent.reward_history().clone(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*; // Import the functions from the parent module
-
-    #[test]
-    fn test_consume() {
-        let mut agent = CrusoeAgent::new(1);
-        agent.stock.add(
-            GoodsUnit {
-                good: Good::Berries,
-                remaining_lifetime: 10,
-            },
-            5,
-        );
-        agent.consume(3);
-        // Expected stock after consumption is 2 units of berries
-        // (three units were consumed) with remaining lifetime 10.
-        let mut expected = Stock::default();
-        expected.add(
-            GoodsUnit {
-                good: Good::Berries,
-                remaining_lifetime: 10,
-            },
-            2,
-        );
-        assert_eq!(agent.stock, expected);
-        agent.consume(2);
-        // Expected stock after consumption of the remaining 2 units
-        // of berries is empty.
-        assert!(agent.stock.stock.is_empty());
-    }
-
-    #[test]
-    fn test_step_forward() {
-        let mut agent = CrusoeAgent::new(1);
-        agent.stock.add(
-            GoodsUnit {
-                good: Good::Berries,
-                remaining_lifetime: 10,
-            },
-            5,
-        );
-        agent.step_forward(Some(Action::Leisure));
-        // Expected stock after one step forward is 4 units of berries
-        // (one unit was consumed) with remaining lifetime 9.
-        let mut expected = Stock::default();
-        expected.add(
-            GoodsUnit {
-                good: Good::Berries,
-                remaining_lifetime: 9,
-            },
-            4,
-        );
-        assert_eq!(agent.stock, expected);
     }
 }

@@ -4,6 +4,7 @@ use crate::config::Config;
 use crate::goods::{Good, GoodsUnitLevel};
 use crate::learning::agent_state::LevelPair;
 use crate::learning::history::{History, SAR};
+use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
 use crate::{Model, UInt};
 use serde::{Deserialize, Serialize};
@@ -50,7 +51,8 @@ impl Simulation {
         agent_hist.insert(0, History::new());
         Simulation {
             time: 0,
-            agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
+            // agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
+            agents: vec![AgentType::Rl(LearningAgent::new(0))], // Initialize with one RL agent
             config: Config {
                 max_time: 100,
                 ..Default::default()
