@@ -73,11 +73,7 @@ where
         //     .into_iter()
         //     .collect_vec();
 
-        let q = combs
-            .into_iter()
-            .cartesian_product(actions)
-            .into_iter()
-            .collect_vec();
+        let q = combs.into_iter().cartesian_product(actions).collect_vec();
 
         for el in q {
             // println!("{:?}", el);

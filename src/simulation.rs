@@ -1,10 +1,9 @@
 use crate::actions::ActionFlattened as Action;
-use crate::agent::{self, Agent, AgentType, CrusoeAgent};
-use crate::config::{Config, RLConfig};
+use crate::agent::{Agent, AgentType, CrusoeAgent};
+use crate::config::Config;
 use crate::goods::Good;
-use crate::learning::agent_state::{DiscrRep, LevelPair};
+use crate::learning::agent_state::LevelPair;
 use crate::learning::history::{History, SAR};
-use crate::learning::tabular_rl::SARSAModel;
 use crate::stock::Stock;
 use crate::{Model, UInt};
 use serde::{Deserialize, Serialize};
