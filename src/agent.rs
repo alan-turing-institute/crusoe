@@ -36,7 +36,7 @@ pub trait Agent {
     /// Execture the given action.
     fn act(&mut self, action: Action);
     /// Step the agent forward by one time step.
-    fn step_forward(&mut self, model: &Model);
+    fn step_forward(&mut self, model: Option<&Model>);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -174,9 +174,13 @@ impl Agent for CrusoeAgent {
         }
     }
 
-    fn step_forward(&mut self, model: &Model) {
+    fn step_forward(&mut self, model: Option<&Model>) {
         // Select action
-        let action = self.choose_action_with_model(model);
+        let action = match model {
+            Some(model) => self.choose_action_with_model(model),
+            None => self.choose_action(),
+        };
+
         // Perform action, which updates the agent's stock
         self.act(action);
         // Consume stock, which updates whether the agent is alive
@@ -264,7 +268,7 @@ mod tests {
             },
             5,
         );
-        agent.step_forward();
+        agent.step_forward(None);
         // Expected stock after one step forward is 4 units of berries
         // (one unit was consumed) with remaining lifetime 9.
         let mut expected = Stock::default();

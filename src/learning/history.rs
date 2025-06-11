@@ -84,11 +84,10 @@ mod tests {
     // AgenteState is now Stock
     // AgentStateItems is now Good
     use crate::actions::ActionFlattened as Action;
-    use crate::goods::Good as AgentStateItems;
-    use crate::learning::agent_state::LevelPair;
-    use crate::stock::Stock as AgentState;
+    use crate::goods::GoodsUnitLevel as AgentStateItems;
+    use crate::stock::{InvLevel, Stock as AgentState};
 
-    fn get_test_history() -> History<AgentState, AgentStateItems, LevelPair, Action> {
+    fn get_test_history() -> History<AgentState, AgentStateItems, InvLevel, Action> {
         History {
             trajectory: vec![SAR::new(
                 AgentState::default(),

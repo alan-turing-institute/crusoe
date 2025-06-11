@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
 use crate::{UInt, actions::Action, stock::RemainingLevel, stock::Stock};
+use strum::IntoEnumIterator;
 
 type Quantity = UInt;
 type Interval = UInt;
@@ -180,6 +181,15 @@ impl GoodsUnitLevel {
             good,
             remaining_lifetime,
         }
+    }
+
+    pub fn iter() -> impl Iterator<Item = GoodsUnitLevel> {
+        Good::iter().flat_map(|good| {
+            RemainingLevel::iter().map(move |remaining_lifetime| GoodsUnitLevel {
+                good,
+                remaining_lifetime,
+            })
+        })
     }
 }
 
