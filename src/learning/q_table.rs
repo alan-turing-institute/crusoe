@@ -143,19 +143,11 @@ mod tests {
 
     #[test]
     fn test_multi_product() {
-        let combs = vec![
-            vec![
-                InvLevel::Critical,
-                InvLevel::Low,
-                InvLevel::Medium,
-                InvLevel::High,
-            ];
-            3
-        ]
-        .clone()
-        .into_iter()
-        .multi_cartesian_product()
-        .collect_vec();
+        let combs = vec![InvLevel::iter().collect_vec(); 3]
+            .clone()
+            .into_iter()
+            .multi_cartesian_product()
+            .collect_vec();
         // Should be: 4 ** 3 with each position taking all possible variants of the enum
         assert_eq!(combs.len(), 64)
     }

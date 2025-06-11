@@ -31,7 +31,8 @@ impl DiscrRep<GoodsUnitLevel, InvLevel> for Stock {
                     good_unit_level,
                     hm.get(&good_unit_level)
                         .cloned()
-                        .unwrap_or(InvLevel::Critical),
+                        // .unwrap_or(InvLevel::Critical),
+                        .unwrap_or(InvLevel::Low),
                 )
             })
             .collect()
