@@ -25,7 +25,10 @@ impl Default for Simulation {
         Simulation {
             time: 0,
             agents: Vec::new(),
-            config: Config::default(),
+            config: Config {
+                max_time: 100,
+                ..Default::default()
+            },
             agent_hist: BTreeMap::new(),
             verbose: true,
         }
@@ -124,6 +127,7 @@ mod tests {
         let sim = Simulation::new(
             Config {
                 max_time: 100,
+
                 ..Default::default()
             },
             true,

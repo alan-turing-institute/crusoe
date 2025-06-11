@@ -5,6 +5,7 @@ use crate::UInt;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub max_time: UInt,
+    pub daily_nutrition: UInt, // Number of units (of any consumer good) required per day.
     pub agent: AgentConfig,
     pub rl: RLConfig,
 }
@@ -14,7 +15,6 @@ pub struct AgentConfig {
     pub inv_level_low: UInt,
     pub inv_level_med: UInt,
     pub inv_level_high: UInt,
-
     // pub remaining_level_high: UInt,
 }
 
@@ -33,6 +33,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             max_time: 100,
+            daily_nutrition: 3,
             rl: RLConfig::default(),
             agent: AgentConfig::default(),
         }
@@ -80,12 +81,13 @@ mod tests {
     fn test_config_serialization_toml() {
         let config = Config {
             max_time: 100,
+            daily_nutrition: 3,
             rl: RLConfig::default(),
             agent: AgentConfig::default(),
         };
         let serialized = toml::to_string(&config).unwrap();
 
-        // assert_eq!(serialized, "max_time = 100\n");
+        // assert_eq!(serialized, "max_time = 100\ndaily_nutrition = 3\n");
 
         let deserialized: Config = toml::from_str(&serialized).unwrap();
         // assert_eq!(deserialized, config);

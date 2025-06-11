@@ -1,8 +1,8 @@
 use crusoe::{
     actions::ActionFlattened as Action,
     config::Config,
-    goods::{Good, GoodsUnitLevel},
-    learning::{agent_state::LevelPair, tabular_rl::SARSAModel},
+    goods::GoodsUnitLevel,
+    learning::tabular_rl::SARSAModel,
     simulation::Simulation,
     stock::{InvLevel, Stock},
 };
@@ -12,6 +12,7 @@ fn main() {
     let mut sim = Simulation::new(
         Config {
             max_time: 100,
+            daily_nutrition: 3,
             ..Config::default()
         },
         true,
@@ -36,4 +37,8 @@ fn main() {
         model.step(sim.time as i32, &sim.agent_hist);
     }
     println!("Actions:  {0:?}", sim.agents[0]);
+
+    // Write sim to disk
+    let s = serde_json::to_string(&sim).unwrap();
+    println!("{s}");
 }
