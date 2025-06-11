@@ -1,5 +1,6 @@
 use crusoe::{
     actions::ActionFlattened as Action,
+    config::Config,
     goods::Good,
     learning::{agent_state::LevelPair, tabular_rl::SARSAModel},
     simulation::Simulation,
@@ -8,9 +9,16 @@ use crusoe::{
 use strum::IntoEnumIterator;
 
 fn main() {
-    let mut sim = Simulation::new();
+    let mut sim = Simulation::new(
+        Config {
+            max_time: 100,
+            ..Config::default()
+        },
+        true,
+    );
     let num_agents = 1u32;
     let multi_policy = false;
+    println!("----");
     let mut model: SARSAModel<Stock, _, _, _> = SARSAModel::new(
         (0..num_agents).collect(),
         Good::iter().collect::<Vec<Good>>(),
@@ -18,6 +26,7 @@ fn main() {
         Action::iter().collect::<Vec<Action>>(),
         multi_policy,
     );
+    println!("Model initialized with {} agents", num_agents);
 
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);

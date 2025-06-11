@@ -8,12 +8,28 @@ use crate::{
     UInt,
     actions::Action,
     config::core_config,
-    goods::{Good, GoodsUnit, GoodsUnitLevel},
+    goods::{Good, GoodsUnit, GoodsUnitLevel, PartialGoodsUnit},
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Stock {
+    #[serde(serialize_with = "serialize_hm")]
     pub stock: HashMap<GoodsUnit, UInt>,
+    pub partial_stock: Vec<PartialGoodsUnit>,
+}
+
+fn serialize_hm<S>(hm: &HashMap<GoodsUnit, UInt>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::ser::SerializeSeq;
+    let mut seq = serializer.serialize_seq(Some(hm.len()))?;
+    for (k, v) in hm.iter() {
+        if *v > 0 {
+            seq.serialize_element(&(k, v))?;
+        }
+    }
+    seq.end()
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
@@ -195,6 +211,14 @@ impl Stock {
         }
     }
 
+    /// Add a unit of a partially complete good to the stock.
+    pub fn add_partial(&mut self, good: PartialGoodsUnit) {
+        if let Some(_) = self.get_partial(good.good) {
+            panic!("Cannot add multiple partial units of the same good.")
+        }
+        let _ = &self.partial_stock.push(good);
+    }
+
     /// Remove a units of a good from the stock.
     pub fn remove(&mut self, good: &GoodsUnit, quantity: UInt) {
         let existing_qty = &self.stock.get(good);
@@ -220,13 +244,42 @@ impl Stock {
         false
     }
 
+    /// Returns a partial unit of the given good, if the stock contains one.
+    pub fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit> {
+        for partial_unit in &self.partial_stock {
+            if partial_unit.good == good {
+                return Some(*partial_unit);
+            }
+        }
+        None
+    }
+
     /// Takes in the current action of the agent and updates the stock accordingly.
     pub fn step_forward(&self, action: Action) -> Stock {
         let mut new_stock = Stock::default();
-        // Degrade all consumer goods by 1 time unit.
+        // Degrade all goods by 1 time unit.
         for (goods_unit, quantity) in &self.stock {
             if let Some(new_goods_unit) = goods_unit.step_forward(action) {
-                new_stock.stock.insert(new_goods_unit, *quantity);
+                let mut new_quantity = *quantity;
+                // If the goods unit is a material *and* is used by this action,
+                // remove one unit of it.
+                if goods_unit.good.is_material() {
+                    match action {
+                        Action::ProduceGood(good) => {
+                            if good.is_produced_using(goods_unit.good) {
+                                new_quantity = new_quantity - 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                new_stock.stock.insert(new_goods_unit, new_quantity);
+            }
+        }
+        // Degrade all partial goods by 1 time unit.
+        for partial_goods_unit in &self.partial_stock {
+            if let Some(new_partial_goods_unit) = partial_goods_unit.step_forward(action) {
+                new_stock.partial_stock.push(new_partial_goods_unit);
             }
         }
         new_stock
@@ -355,7 +408,10 @@ mod tests {
             },
             1,
         );
-        let stock = Stock { stock: stock };
+        let stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
 
         assert_eq!(
             stock.stock.get(&GoodsUnit {

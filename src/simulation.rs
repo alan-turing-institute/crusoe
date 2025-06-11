@@ -11,16 +11,30 @@ use std::collections::BTreeMap;
 use std::vec::Vec;
 
 // TODO: add RL algorithm
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Simulation {
     pub time: UInt,
     pub agents: Vec<AgentType>,
     pub config: Config,
     pub agent_hist: BTreeMap<u32, History<Stock, Good, LevelPair, Action>>,
+    pub verbose: bool,
+}
+
+impl Default for Simulation {
+    fn default() -> Self {
+        Simulation {
+            time: 0,
+            agents: Vec::new(),
+            config: Config::default(),
+            agent_hist: BTreeMap::new(),
+            verbose: true,
+        }
+    }
 }
 
 impl Simulation {
-    pub fn new() -> Self {
+    pub fn new(config: Config, verbose: bool) -> Self {
+        // TODO: remove config here
         let config = Config::default();
         // TODO: add n_agents to config
         // let num_agents = 10;
@@ -36,9 +50,13 @@ impl Simulation {
         agent_hist.insert(0, History::new());
         Simulation {
             time: 0,
-            agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
-            config, // Default value, can be overridden
+            agents: vec![AgentType::Crusoe(CrusoeAgent::new(1))], // Initialize with one Crusoe agent
+            config: Config {
+                max_time: 100,
+                ..Default::default()
+            },
             agent_hist,
+            verbose,
         }
     }
 
@@ -81,6 +99,18 @@ impl Simulation {
 
         // Execute that trade by updating the stocks of the two agents involved.
     }
+
+    // Run simulation
+    pub fn run(&mut self, model: &mut Model) {
+        while self.time < self.config.max_time {
+            self.step_forward(model);
+            if self.verbose {
+                println!("Time: {}, Agents: {}", self.time, self.agents.len());
+                println!("Actions:  {0:#?}", self.agents[0]);
+            }
+            self.time += 1;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -89,7 +119,13 @@ mod tests {
 
     #[test]
     fn test_simulation_initialization() {
-        let sim = Simulation::new();
+        let sim = Simulation::new(
+            Config {
+                max_time: 100,
+                ..Default::default()
+            },
+            true,
+        );
         assert_eq!(sim.time, 0);
         assert!(!sim.agents.is_empty());
         assert_eq!(sim.agents.len(), 1);
