@@ -138,10 +138,14 @@ impl RationalAgent {
             dummy_agent.acquire(goods_unit.clone(), 1);
         }
         let mut count = 0;
-        while dummy_agent.is_alive() {
+        // while dummy_agent.is_alive() {
+        loop {
             let action = Action::Leisure;
-            let is_alive = dummy_agent.consume(self.daily_nutrition);
-            dummy_agent.set_liveness(is_alive);
+            // let is_alive = dummy_agent.consume(self.daily_nutrition);
+            if !dummy_agent.consume(self.daily_nutrition) {
+                break; // Break out as soon as death happens.
+            }
+            // dummy_agent.set_liveness(is_alive);
             dummy_agent.set_stock(dummy_agent.stock().step_forward(action));
             count += 1;
         }
@@ -204,5 +208,40 @@ impl Agent for RationalAgent {
 
     fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit> {
         self.stock.get_partial(good)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        UInt,
+        actions::Action,
+        goods::{Good, GoodsUnit},
+    };
+
+    #[test]
+    fn test_marginal_unit_value() {
+        // Test marginal unit value of berries, given zero stock.
+        let daily_nutrition = 3;
+        let agent = RationalAgent::new(1, daily_nutrition);
+
+        let goods_unit = GoodsUnit::new(&Good::Berries);
+
+        // Minimum time required to produce sustanance equivalent to 1 unit of berries is 1/4 days
+        // (by producing berries):
+        let expected: f32 = 0.25;
+        assert_eq!(agent.marginal_unit_value(&goods_unit), expected);
+
+        // Start again with an empty stock.
+        let agent = RationalAgent::new(1, daily_nutrition);
+
+        let goods_unit = GoodsUnit::new(&Good::Fish);
+
+        // Minimum time required to produce sustanance equivalent to 1 unit of fish is 1/4 days
+        // (by producing berries):
+        let expected: f32 = 0.25;
+
+        assert_eq!(agent.marginal_unit_value(&goods_unit), expected);
     }
 }
