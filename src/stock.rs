@@ -87,10 +87,18 @@ impl Stock {
         // Degrade all goods by 1 time unit.
         for (goods_unit, quantity) in &self.stock {
             if let Some(new_goods_unit) = goods_unit.step_forward(action) {
-                // If the goods unit is a material, remove one unit of it.
                 let mut new_quantity = *quantity;
+                // If the goods unit is a material *and* is used by this action,
+                // remove one unit of it.
                 if goods_unit.good.is_material() {
-                    new_quantity = new_quantity - 1;
+                    match action {
+                        Action::ProduceGood(good) => {
+                            if good.is_produced_using(goods_unit.good) {
+                                new_quantity = new_quantity - 1;
+                            }
+                        }
+                        _ => {}
+                    }
                 }
                 new_stock.stock.insert(new_goods_unit, new_quantity);
             }
