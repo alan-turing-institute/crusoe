@@ -122,26 +122,8 @@ impl Stock {
     pub fn next_consumables(&self) -> Vec<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
-            .filter(|(good, qty)| {
-                matches!(
-                    **good,
-                    GoodsUnit {
-                        good: Good::Berries,
-                        remaining_lifetime: _
-                    }
-                )
-            })
-            .sorted_by_key(|(good, _)| {
-                if let GoodsUnit {
-                    good: Good::Berries,
-                    remaining_lifetime,
-                } = good
-                {
-                    *remaining_lifetime
-                } else {
-                    unreachable!()
-                }
-            })
+            .filter(|(good, _)| good.good.is_consumer())
+            .sorted_by_key(|(good, _)| good.remaining_lifetime)
             .collect()
     }
 }
@@ -221,6 +203,30 @@ mod tests {
             }),
             Some(&1)
         );
+    }
+
+    #[test]
+    fn test_next_consumables() {
+        let mut stock = HashMap::<GoodsUnit, UInt>::new();
+        // Start with 2 units of berries and 1 unit of fish.
+        stock.insert(GoodsUnit::new(&Good::Berries), 2);
+        stock.insert(GoodsUnit::new(&Good::Fish), 1);
+
+        let stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
+
+        let mut result = stock.next_consumables();
+        assert_eq!(result.len(), 2);
+
+        let first = result.pop().unwrap();
+        assert_eq!(first.0, &GoodsUnit::new(&Good::Berries));
+        assert_eq!(first.1, &2);
+
+        let second = result.pop().unwrap();
+        assert_eq!(second.0, &GoodsUnit::new(&Good::Fish));
+        assert_eq!(second.1, &1);
     }
 
     #[test]

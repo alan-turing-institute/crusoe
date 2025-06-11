@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::actions::Action;
 use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
 use crate::stock::Stock;
+use crate::valuation::RationalAgent;
 use crate::{Int, UInt};
 
 #[enum_dispatch]
@@ -218,6 +219,7 @@ impl Agent for CrusoeAgent {
 #[enum_dispatch(Agent)]
 pub enum AgentType {
     Crusoe(CrusoeAgent),
+    Rational(RationalAgent),
 }
 
 /// A simple function that adds two integers.
@@ -265,6 +267,18 @@ mod tests {
     }
 
     #[test]
+    fn test_consume_different_goods() {
+        let mut agent = CrusoeAgent::new(1);
+        // Add 2 units of berries and 1 unit of fish.
+        agent.acquire(GoodsUnit::new(&Good::Berries), 2);
+        agent.acquire(GoodsUnit::new(&Good::Fish), 1);
+
+        // The agent can successfully consume 3 nutritional units.
+        assert!(agent.consume(3));
+        assert!(agent.stock.stock.is_empty());
+    }
+
+    #[test]
     fn test_step_forward() {
         let mut agent = CrusoeAgent::new(1);
         agent.stock.add(
@@ -286,5 +300,37 @@ mod tests {
             4,
         );
         assert_eq!(agent.stock, expected);
+    }
+
+    #[test]
+    fn test_acquire() {
+        // Test acquisition of berries.
+        let mut agent = CrusoeAgent::new(1);
+        let goods_unit = GoodsUnit::new(&Good::Berries);
+
+        let mut stock = Stock::default();
+        assert_eq!(agent.stock(), &stock);
+
+        agent.acquire(goods_unit, 2);
+
+        stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            2,
+        );
+        assert_eq!(agent.stock(), &stock);
+
+        agent.acquire(goods_unit, 1);
+
+        stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            1,
+        );
+        assert_eq!(agent.stock(), &stock);
     }
 }
