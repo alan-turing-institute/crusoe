@@ -5,7 +5,7 @@ use crate::{
     UInt,
     actions::Action,
     agent::Agent,
-    goods::{Good, GoodsUnit, PartialGoodsUnit},
+    goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity},
     stock::Stock,
 };
 
@@ -31,7 +31,7 @@ impl RationalAgent {
         }
     }
 
-    /// Returns the marginal benefit to the agent of the product of the specified action,
+    /// Returns the marginal benefit to the agent of the product (output) of the specified action,
     /// given the existing stock.
     ///
     /// We define the marginal benefit of an action to produce a consumer good $g$, given existing
@@ -50,6 +50,111 @@ impl RationalAgent {
         }
     }
 
+    /// Returns the marginal value of a unit of a capital good, given the existing stock.
+    fn marginal_unit_value_of_capital_good(&self, good: &Good) -> f32 {
+        if good.is_consumer() {
+            panic!("Expected capital good.")
+        }
+
+        // First-order capital goods.
+        for alt_good in Good::iter() {}
+        let result: f32 = Good::iter()
+            .filter(|g| g.is_consumer())
+            .filter(|g| g.is_produced_using(good))
+            .map(|consumer_good| {
+                self.value_generated_by_first_order_capital_good(good, &consumer_good)
+            })
+            .sum();
+
+        todo!()
+    }
+
+    fn value_generated_by_first_order_capital_good(
+        &self,
+        capital_good: &Good,
+        consumer_good: &Good,
+    ) -> f32 {
+        self.validate_consumer_and_first_order_capital_good(capital_good, consumer_good);
+        // TODO: include discounting, which requires finding the times of most productive
+        // use of the capital good in producing the consumer good and the number of days taken
+        // to produce the capital good. For simplicity, we currently ignore discounting.
+
+        let capital_goods_unit = GoodsUnit::new(capital_good);
+        let mut dummy_agent = self.clone();
+
+        // Take into account the possibility that the stock may already contain the capital good.
+        let mut factor = 1.0;
+        if self.stock().contains(capital_good) {
+            let capital_goods_in_stock = &self.stock().next_capital_goods_units(capital_good);
+            let usable_days: u32 = capital_goods_in_stock
+                .iter()
+                .map(|(goods_unit, qty)| *qty * goods_unit.remaining_lifetime)
+                .sum();
+            // Reduce the result by a factor equal to the lifetime of the new capital goods unit
+            // divided by the number of days of use already available from the existing stock.
+            factor = (capital_goods_unit.remaining_lifetime as f32) / (usable_days as f32);
+
+            // Remove any units of the capital good from the dummy agent's stock.
+            for goods_unit_in_stock in capital_goods_in_stock {
+                dummy_agent
+                    .stock_mut()
+                    .remove(goods_unit_in_stock.0, *goods_unit_in_stock.1);
+            }
+        }
+        // Check that the dummy agent's stock does not contain the capital good.
+        assert!(!dummy_agent.stock().contains(capital_good));
+
+        // Get the productivity of the consumer good with and without the capital good.
+        let productivity_sans = match dummy_agent.productivity(consumer_good) {
+            Productivity::Immediate(quantity) => quantity,
+            Productivity::Delayed(_) => unreachable!("Consumer goods have immediate productivity"),
+            Productivity::None => unreachable!("Consumer goods have immediate productivity"),
+        };
+        dummy_agent.acquire(capital_goods_unit, 1);
+        let productivity_with = match dummy_agent.productivity(consumer_good) {
+            Productivity::Immediate(quantity) => quantity,
+            Productivity::Delayed(_) => unreachable!("Consumer goods have immediate productivity"),
+            Productivity::None => unreachable!("Consumer goods have immediate productivity"),
+        };
+        // Check that the productivity with the capital good exceeds that without.
+        assert!(productivity_with > productivity_sans);
+
+        let mut sum: f32 = 0.0;
+        let mut count = 0;
+        while count + productivity_sans != productivity_with {
+            // TODO: discounting.
+
+            // Add the marginal value of one unit of the consumer good, given a stock
+            // that contains `count` additional units of the consumer good.
+            sum = sum + dummy_agent.marginal_unit_value_of_consumer_good(consumer_good);
+            dummy_agent.acquire(GoodsUnit::new(consumer_good), 1);
+
+            count = count + 1;
+        }
+
+        factor * (capital_goods_unit.remaining_lifetime as f32) * sum
+    }
+
+    // fn times_of_most_productive_first_order_use(&self, capital_good: &Good, consumer_good: &Good) ->  {
+    //     self.validate_consumer_and_first_order_capital_good(capital_good, consumer_good);
+    // }
+
+    fn validate_consumer_and_first_order_capital_good(
+        &self,
+        capital_good: &Good,
+        consumer_good: &Good,
+    ) {
+        if capital_good.is_consumer() {
+            panic!("Expected capital good.")
+        }
+        if !consumer_good.is_consumer() {
+            panic!("Expected consumer good.")
+        }
+        if !consumer_good.is_produced_using(capital_good) {
+            panic!("Invalid higher- and lower-order pair of goods.")
+        }
+    }
+
     /// Returns the marginal benefit to the agent of producing a consumer good,
     /// given the existing stock.
     fn marginal_benefit_of_producing_consumer_goods(&self, good: &Good) -> f32 {
@@ -62,25 +167,28 @@ impl RationalAgent {
                 panic!("All consumer goods have immediate productivity.")
             }
         };
-        let mut count = 0;
         let mut sum: f32 = 0.0;
+        let mut count = 0;
         let mut dummy_agent = self.clone();
         while count != productivity {
             // TODO: discounting.
-            sum = sum + dummy_agent.marginal_unit_value(good);
+            sum = sum + dummy_agent.marginal_unit_value_of_consumer_good(good);
             dummy_agent.acquire(GoodsUnit::new(good), 1);
             count = count + 1;
         }
         sum
     }
 
-    /// Returns the marginal valuation of the goods unit, given the stock.
+    /// Returns the marginal value of a unit of a consumer good, given the existing stock.
     ///
     /// We define the marginal unit value of a consumer good $g$, given existing stock $S$, as
     /// the min amount of time required to produce equivalent additional sustenance to 1 additional
     /// unit of g (given stock S). If 1 additional unit of g (given stock S) produces no additional
     /// sustenance, it's marginal unit value is zero.
-    fn marginal_unit_value(&self, good: &Good) -> f32 {
+    fn marginal_unit_value_of_consumer_good(&self, good: &Good) -> f32 {
+        if !good.is_consumer() {
+            panic!("Expected consumer good.")
+        }
         // 1. Count additional days of sustenance from 1 additional unit of g
         let additional_sustenance = self.additional_sustenance(good);
         // If the additional sustenance is zero, the value of the marginal unit is also zero.
@@ -292,12 +400,18 @@ mod tests {
 
         // 1 additional unit of berries provides no additional sustenance when stock is empty.
         // So the marginal value of 1 unit of berries is zero.
-        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.0);
+        assert_eq!(
+            agent.marginal_unit_value_of_consumer_good(&Good::Berries),
+            0.0
+        );
 
         agent.acquire(berries_unit, 1);
         // 1 additional unit of berries provides no additional sustenance when stock is 1 unit of berries.
         // So the marginal value of 1 unit of berries is zero.
-        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.0);
+        assert_eq!(
+            agent.marginal_unit_value_of_consumer_good(&Good::Berries),
+            0.0
+        );
 
         agent.acquire(berries_unit, 1);
 
@@ -305,7 +419,10 @@ mod tests {
         // stock is 2 units of berries. Minimum time required to produce sustanance
         // equivalent to additional 1 unit of berries is 1/4 days (by producing berries).
         // So the marginal value of 1 unit of berries is 1/4.
-        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.25);
+        assert_eq!(
+            agent.marginal_unit_value_of_consumer_good(&Good::Berries),
+            0.25
+        );
 
         // Start again with an empty stock.
         let mut agent = RationalAgent::new(1, daily_nutrition);
@@ -314,20 +431,26 @@ mod tests {
 
         // 1 additional unit of fish provides no additional sustenance when stock is empty.
         // So the marginal value of 1 unit of fish is zero.
-        assert_eq!(agent.marginal_unit_value(&Good::Fish), 0.0);
+        assert_eq!(agent.marginal_unit_value_of_consumer_good(&Good::Fish), 0.0);
 
         agent.acquire(fish_unit, 1);
         // 1 additional unit of fish provides no additional sustenance when stock is 1 unit of fish.
         // So the marginal value of 1 unit of fish is zero.
-        assert_eq!(agent.marginal_unit_value(&Good::Fish), 0.0);
+        assert_eq!(agent.marginal_unit_value_of_consumer_good(&Good::Fish), 0.0);
 
         agent.acquire(fish_unit, 1);
         // 1 additional unit of fish provides 1 day of additional sustenance when
         // stock is 2 units of fish. Minimum time required to produce sustanance
         // equivalent to additional 1 unit of fish is 1/4 days (by producing berries, not fish!).
         // So the marginal value of 1 unit of fish is 1/4.
-        assert_eq!(agent.marginal_unit_value(&Good::Fish), 0.25);
-        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.25);
+        assert_eq!(
+            agent.marginal_unit_value_of_consumer_good(&Good::Fish),
+            0.25
+        );
+        assert_eq!(
+            agent.marginal_unit_value_of_consumer_good(&Good::Berries),
+            0.25
+        );
     }
 
     #[test]

@@ -68,9 +68,9 @@ impl Stock {
     }
 
     /// Returns true if the stock contains any units of the given good.
-    pub fn contains(&self, good: Good) -> bool {
+    pub fn contains(&self, good: &Good) -> bool {
         for (goods_unit, _) in self.stock.iter() {
-            if goods_unit.good == good {
+            if &goods_unit.good == good {
                 return true;
             }
         }
@@ -99,7 +99,7 @@ impl Stock {
                 if goods_unit.good.is_material() {
                     match action {
                         Action::ProduceGood(good) => {
-                            if good.is_produced_using(goods_unit.good) {
+                            if good.is_produced_using(&goods_unit.good) {
                                 new_quantity = new_quantity - 1;
                             }
                         }
@@ -123,6 +123,16 @@ impl Stock {
         self.stock
             .iter()
             .filter(|(good, _)| good.good.is_consumer())
+            .sorted_by_key(|(good, _)| good.remaining_lifetime)
+            .collect()
+    }
+
+    /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
+    pub fn next_capital_goods_units(&self, capital_good: &Good) -> Vec<(&GoodsUnit, &u32)> {
+        self.stock
+            .iter()
+            .filter(|(good, _)| !good.good.is_consumer())
+            .filter(|(good, _)| good.good == *capital_good)
             .sorted_by_key(|(good, _)| good.remaining_lifetime)
             .collect()
     }

@@ -68,7 +68,7 @@ impl Good {
                 // have enough input materials.
                 for required_input in self.required_inputs() {
                     // IMP TODO: check sufficient quantity of inputs.
-                    if !stock.contains(required_input) {
+                    if !stock.contains(&required_input) {
                         return Productivity::None;
                     }
                 }
@@ -79,7 +79,7 @@ impl Good {
         match self {
             Good::Berries => {
                 // Productivity of berries is increased by access to a basket.
-                if stock.contains(Good::Basket) {
+                if stock.contains(&Good::Basket) {
                     return Productivity::Immediate(8);
                 }
                 Productivity::Immediate(4)
@@ -87,7 +87,7 @@ impl Good {
             Good::Basket => return Productivity::Immediate(1),
             Good::Fish => {
                 // Productivity of fish is increased by access to a spear.
-                if stock.contains(Good::Spear) {
+                if stock.contains(&Good::Spear) {
                     return Productivity::Immediate(10);
                 }
                 Productivity::Immediate(2)
@@ -97,7 +97,7 @@ impl Good {
             Good::Boat => panic!("Boat takes multiple timesteps to complete"),
             Good::Timber => {
                 // Productivity of timber is dependent on access to an axe.
-                if stock.contains(Good::Axe) {
+                if stock.contains(&Good::Axe) {
                     return Productivity::Immediate(2);
                 }
                 return Productivity::None;
@@ -107,7 +107,7 @@ impl Good {
     }
 
     /// Returns true if this good is produced using the given (higher order) good.
-    pub fn is_produced_using(&self, good: Good) -> bool {
+    pub fn is_produced_using(&self, good: &Good) -> bool {
         match self {
             Good::Berries => match good {
                 Good::Basket => true,
@@ -255,7 +255,7 @@ impl GoodsUnit {
             // remaining lifetime. Otherwise return it unchanged.
             false => match action {
                 Action::ProduceGood(produced_good) => {
-                    if produced_good.is_produced_using(self.good) {
+                    if produced_good.is_produced_using(&self.good) {
                         if self.remaining_lifetime > 1 {
                             return Some(GoodsUnit {
                                 good: self.good,
