@@ -45,7 +45,7 @@ pub enum RemainingLevel { // lifetime
     //Critical,
     Low,
     //Medium,
-    High,
+    // High,
 
 }
 
@@ -78,7 +78,7 @@ impl Stock {
                         remaining_lifetime,
                     },
                     qty,
-                ) if *qty >= config.agent.inv_level_low && *qty < config.agent.inv_level_med => {
+                ) if *qty < config.agent.inv_level_med => {
                     ds.insert(
                         GoodsUnitLevel::new(*good, RemainingLevel::Low),
                         InvLevel::Low,
@@ -90,7 +90,7 @@ impl Stock {
                         remaining_lifetime,
                     },
                     qty,
-                ) if *qty >= config.agent.inv_level_med && *qty < config.agent.inv_level_high => {
+                ) if *qty < config.agent.inv_level_high => {
                     ds.insert(
                         GoodsUnitLevel::new(*good, RemainingLevel::Low),
                         InvLevel::Medium,
@@ -102,13 +102,12 @@ impl Stock {
                         remaining_lifetime,
                     },
                     qty,
-                ) if *qty >= config.agent.inv_level_high => {
+                ) => {
                     ds.insert(
                         GoodsUnitLevel::new(*good, RemainingLevel::Low),
                         InvLevel::High,
                     );
                 },
-                _ => unreachable!("No other quantity levels to handle"),
             }
         }
         StockDiscrete { stock: ds }
