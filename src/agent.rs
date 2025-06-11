@@ -91,8 +91,8 @@ impl Agent for CrusoeAgent {
     // self can be immutable here.
     fn choose_action(&mut self) -> Action {
         // let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
-        // let action = Action::random(&mut StdRng::from_os_rng());
-        let action = Action::random(&mut StdRng::seed_from_u64(self.id));
+        let action = Action::random(&mut StdRng::from_os_rng());
+        // let action = Action::random(&mut StdRng::seed_from_u64(self.id));
         self.action_history.push(action);
         action
     }
@@ -188,19 +188,21 @@ impl Agent for CrusoeAgent {
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
         // self.is_alive = self.consume(1);
-        self.consume(1);
+        let is_alive = self.consume(1);
         // Degrade the agent's stock.
         self.stock_history.push(self.stock.clone());
         self.stock = self.stock.step_forward(action);
         // Update reward history
-        match (action, self.is_alive) {
+        match (action, is_alive) {
             (Action::ProduceGood(_), true) => {
                 self.reward_history.push(Reward::new(0));
             }
             (Action::Leisure, true) => {
+                panic!("LEISURE");
                 self.reward_history.push(Reward::new(1));
             }
             (_, false) => {
+                // panic!("NOT ENOUGH NUTRITION");
                 self.reward_history.push(Reward::new(-100000));
             }
         };
