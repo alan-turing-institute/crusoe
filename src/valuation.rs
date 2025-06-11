@@ -116,6 +116,9 @@ impl RationalAgent {
             Productivity::Delayed(_) => unreachable!("Consumer goods have immediate productivity"),
             Productivity::None => unreachable!("Consumer goods have immediate productivity"),
         };
+        // Remove the capital good again.
+        dummy_agent.stock_mut().remove(&capital_goods_unit, 1);
+
         // Check that the productivity with the capital good exceeds that without.
         assert!(productivity_with > productivity_sans);
 
@@ -178,6 +181,9 @@ impl RationalAgent {
         }
         sum
     }
+
+    // PROBLEM: Discrete jumps when daily nutritional levels are reached violate the law
+    // of diminishing returns. To fix this we need to work in fractional days throughout.
 
     /// Returns the marginal value of a unit of a consumer good, given the existing stock.
     ///
@@ -362,9 +368,26 @@ mod tests {
     use crate::goods::{Good, GoodsUnit};
 
     #[test]
-    fn test_marginal_benefit_of_action() {
+    fn test_value_generated_by_first_order_capital_good() {
         let daily_nutrition = 3;
         let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        let capital_good = Good::Basket;
+        let consumer_good = Good::Berries;
+
+        let result =
+            agent.value_generated_by_first_order_capital_good(&capital_good, &consumer_good);
+
+        // Marginal value of a basket, given otherwise empty stock, is the lifetime of the basket
+        // (10 uses) multiplied by the marginal value of each additional unit of berries afforded
+        // by the basket during those uses (which is 0.25). So the value is 2.5.
+        assert_eq!(result, 2.5);
+    }
+
+    #[test]
+    fn test_marginal_benefit_of_action() {
+        let daily_nutrition = 3;
+        let agent = RationalAgent::new(1, daily_nutrition);
 
         let action = Action::ProduceGood(Good::Berries);
 
