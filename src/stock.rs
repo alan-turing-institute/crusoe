@@ -73,12 +73,12 @@ impl Stock {
                             InvLevel::Critical,
                         );
                     }
-                    x if x >= config.agent.remaining_level_high => {
-                        ds.insert(
-                            GoodsUnitLevel::new(*good, RemainingLevel::High),
-                            InvLevel::Critical,
-                        );
-                    }
+                    // x if x >= config.agent.remaining_level_high => {
+                    //     ds.insert(
+                    //         GoodsUnitLevel::new(*good, RemainingLevel::High),
+                    //         InvLevel::Critical,
+                    //     );
+                    // }
                     _ => unreachable!("No other lifetime levels to handle"),
                 },
                 (
@@ -95,12 +95,12 @@ impl Stock {
                                 InvLevel::Low,
                             );
                         }
-                        x if x >= config.agent.remaining_level_high => {
-                            ds.insert(
-                                GoodsUnitLevel::new(*good, RemainingLevel::High),
-                                InvLevel::Low,
-                            );
-                        }
+                        // x if x >= config.agent.remaining_level_high => {
+                        //     ds.insert(
+                        //         GoodsUnitLevel::new(*good, RemainingLevel::High),
+                        //         InvLevel::Low,
+                        //     );
+                        // }
                         _ => unreachable!("No other lifetime levels to handle"),
                     }
                 }
@@ -119,12 +119,12 @@ impl Stock {
                                 InvLevel::Medium,
                             );
                         }
-                        x if x >= config.agent.remaining_level_high => {
-                            ds.insert(
-                                GoodsUnitLevel::new(*good, RemainingLevel::High),
-                                InvLevel::Medium,
-                            );
-                        }
+                        // x if x >= config.agent.remaining_level_high => {
+                        //     ds.insert(
+                        //         GoodsUnitLevel::new(*good, RemainingLevel::High),
+                        //         InvLevel::Medium,
+                        //     );
+                        // }
                         _ => unreachable!("No other lifetime levels to handle"),
                     }
                 }
@@ -141,12 +141,12 @@ impl Stock {
                             InvLevel::High,
                         );
                     }
-                    x if x >= config.agent.remaining_level_high => {
-                        ds.insert(
-                            GoodsUnitLevel::new(*good, RemainingLevel::High),
-                            InvLevel::High,
-                        );
-                    }
+                    // x if x >= config.agent.remaining_level_high => {
+                    //     ds.insert(
+                    //         GoodsUnitLevel::new(*good, RemainingLevel::High),
+                    //         InvLevel::High,
+                    //     );
+                    // }
                     _ => unreachable!("No other lifetime levels to handle"),
                 },
                 _ => unreachable!("No other quantity levels to handle"),
