@@ -33,7 +33,7 @@ where
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
-pub enum InvLevel {
+pub enum InvLevel { // quantity
     Critical,
     Low,
     Medium,
@@ -41,10 +41,10 @@ pub enum InvLevel {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
-pub enum RemainingLevel {
-    Critical,
+pub enum RemainingLevel { // lifetime
+    //Critical,
     Low,
-    Medium,
+    //Medium,
     High,
 }
 
@@ -66,25 +66,13 @@ impl Stock {
                     },
                     qty,
                 ) if *qty < config.agent.inv_level_low => match *remaining_lifetime {
-                    x if x < config.agent.inv_level_low => {
-                        ds.insert(
-                            GoodsUnitLevel::new(*good, RemainingLevel::Critical),
-                            InvLevel::Critical,
-                        );
-                    }
-                    x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
+                    x if x < config.agent.remaining_level_high => {
                         ds.insert(
                             GoodsUnitLevel::new(*good, RemainingLevel::Low),
                             InvLevel::Critical,
                         );
                     }
-                    x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
-                        ds.insert(
-                            GoodsUnitLevel::new(*good, RemainingLevel::Medium),
-                            InvLevel::Critical,
-                        );
-                    }
-                    x if x >= config.agent.inv_level_high => {
+                    x if x >= config.agent.remaining_level_high => {
                         ds.insert(
                             GoodsUnitLevel::new(*good, RemainingLevel::High),
                             InvLevel::Critical,
@@ -100,25 +88,13 @@ impl Stock {
                     qty,
                 ) if *qty >= config.agent.inv_level_low && *qty < config.agent.inv_level_med => {
                     match *remaining_lifetime {
-                        x if x < config.agent.inv_level_low => {
-                            ds.insert(
-                                GoodsUnitLevel::new(*good, RemainingLevel::Critical),
-                                InvLevel::Low,
-                            );
-                        }
-                        x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
+                        x if x < config.agent.remaining_level_high => {
                             ds.insert(
                                 GoodsUnitLevel::new(*good, RemainingLevel::Low),
                                 InvLevel::Low,
                             );
                         }
-                        x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
-                            ds.insert(
-                                GoodsUnitLevel::new(*good, RemainingLevel::Medium),
-                                InvLevel::Low,
-                            );
-                        }
-                        x if x >= config.agent.inv_level_high => {
+                        x if x >= config.agent.remaining_level_high => {
                             ds.insert(
                                 GoodsUnitLevel::new(*good, RemainingLevel::High),
                                 InvLevel::Low,
@@ -135,31 +111,18 @@ impl Stock {
                     qty,
                 ) if *qty >= config.agent.inv_level_med && *qty < config.agent.inv_level_high => {
                     match *remaining_lifetime {
-                        x if x < config.agent.inv_level_low => {
-                            ds.insert(
-                                GoodsUnitLevel::new(*good, RemainingLevel::Critical),
-                                InvLevel::Medium,
-                            );
-                        }
-                        x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
+                        x if x < config.agent.remaining_level_high => {
                             ds.insert(
                                 GoodsUnitLevel::new(*good, RemainingLevel::Low),
                                 InvLevel::Medium,
                             );
                         }
-                        x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
-                            ds.insert(
-                                GoodsUnitLevel::new(*good, RemainingLevel::Medium),
-                                InvLevel::Medium,
-                            );
-                        }
-                        x if x >= config.agent.inv_level_high => {
+                        x if x >= config.agent.remaining_level_high => {
                             ds.insert(
                                 GoodsUnitLevel::new(*good, RemainingLevel::High),
                                 InvLevel::Medium,
                             );
                         }
-
                         _ => unreachable!("No other lifetime levels to handle"),
                     }
                 }
@@ -170,30 +133,19 @@ impl Stock {
                     },
                     qty,
                 ) if *qty >= config.agent.inv_level_high => match *remaining_lifetime {
-                    x if x < config.agent.inv_level_low => {
-                        ds.insert(
-                            GoodsUnitLevel::new(*good, RemainingLevel::Critical),
-                            InvLevel::High,
-                        );
-                    }
-                    x if x >= config.agent.inv_level_low && x < config.agent.inv_level_med => {
+                    x if x < config.agent.remaining_level_high => {
                         ds.insert(
                             GoodsUnitLevel::new(*good, RemainingLevel::Low),
                             InvLevel::High,
                         );
                     }
-                    x if x >= config.agent.inv_level_med && x < config.agent.inv_level_high => {
-                        ds.insert(
-                            GoodsUnitLevel::new(*good, RemainingLevel::Medium),
-                            InvLevel::High,
-                        );
-                    }
-                    x if x >= config.agent.inv_level_high => {
+                    x if x >= config.agent.remaining_level_high => {
                         ds.insert(
                             GoodsUnitLevel::new(*good, RemainingLevel::High),
                             InvLevel::High,
                         );
                     }
+
                     _ => unreachable!("No other lifetime levels to handle"),
                 },
                 _ => unreachable!("No other quantity levels to handle"),
