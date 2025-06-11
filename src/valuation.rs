@@ -33,25 +33,58 @@ impl RationalAgent {
         }
     }
 
+    /// Returns the marginal benefit to the agent of the product of the given action, given the stock.
+    ///
+    /// We define the marginal benefit of an action to produce a consumer good $g$, given existing
+    /// stock $S$, as the (discounted) sum of the marginal values of the additional units.
+    fn marginal_benefit_of_product(&self, action: &Action) -> f32 {
+        let good = match action {
+            Action::ProduceGood(good) => Some(good),
+            Action::Leisure => None,
+        };
+        if good.is_none() {
+            return 0.0;
+        }
+        // let goods_unit = GoodsUnit::new(good.unwrap());
+        let good = good.unwrap();
+        let productivity_per_unit_time = self.productivity(good).per_unit_time();
+        if productivity_per_unit_time.is_none() {
+            return 0.0;
+        }
+        let productivity_per_unit_time = productivity_per_unit_time.unwrap();
+        let count = 0;
+        let mut sum: f32 = 0.0;
+        let mut dummy_agent = self.clone();
+        while (count as f32) < productivity_per_unit_time {
+            sum = sum + dummy_agent.marginal_unit_value(good);
+            dummy_agent.acquire(GoodsUnit::new(good), 1);
+        }
+
+        todo!()
+    }
+
     /// Returns the marginal valuation of the goods unit, given the stock.
     ///
     /// We define the marginal unit value of a consumer good $g$, given existing stock $S$, as
     /// the min amount of time required to produce equivalent additional sustenance to 1 additional
     /// unit of g (given stock S).
-    /// If 1 additional unit of g (given stock S) produces no additional sustenance... TODO.
-    fn marginal_unit_value(&self, goods_unit: &GoodsUnit) -> f32 {
+    /// If 1 additional unit of g (given stock S) produces no additional sustenance, it's marginal
+    /// unit value is zero.
+    /// IMP TODO: replace goods_unit with good.!!!!!!!!!
+    // fn marginal_unit_value(&self, goods_unit: &GoodsUnit) -> f32 {
+    fn marginal_unit_value(&self, good: &Good) -> f32 {
         // 1. Count additional days of sustenance from 1 additional unit of g
         // TODO: need this to be non-zero else the marginal unit value will be zero.
         // SHOULD IT BE ZERO IN THIS CASE? IF SO, JUST RETURN ZERO HERE.
         // THIS COULD BE FINE BECAUSE IN PRACTICE GOODS WILL BE ACQUIRED IN QUANTITIES GREATER THAN 1 UNIT.
-        let additional_sustenance = self.additional_sustenance(goods_unit);
+        let additional_sustenance = self.additional_sustenance(good);
         if additional_sustenance == 0 {
             return 0.0;
         }
 
         // 2. Initialise the minimum time to produce equivalent sustenance, to the value for
         // this good. Return zero value if the agent's productivity for this good is None.
-        let productivity_per_unit_time = self.productivity(goods_unit.good).per_unit_time();
+        let productivity_per_unit_time = self.productivity(good).per_unit_time();
         if productivity_per_unit_time.is_none() {
             return 0.0;
         }
@@ -62,7 +95,7 @@ impl RationalAgent {
         // days of sustenance.
         for alt_good in Good::iter() {
             // Ignore the good itself as we alreday initialised min_equiv for it.
-            if alt_good == goods_unit.good {
+            if alt_good == *good {
                 continue;
             }
             if let Some(t) =
@@ -94,7 +127,7 @@ impl RationalAgent {
         let survival_time = self.count_timesteps_till_death(None);
         match alt_good.is_consumer() {
             true => {
-                if let Some(productivity) = self.productivity(alt_good).per_unit_time() {
+                if let Some(productivity) = self.productivity(&alt_good).per_unit_time() {
                     let mut count_days = 0;
                     loop {
                         // Simulate one day of action to produce the alternative good.
@@ -140,9 +173,9 @@ impl RationalAgent {
     }
 
     /// Counts the number of additional days of survival provided by the additional goods unit.
-    fn additional_sustenance(&self, goods_unit: &GoodsUnit) -> u32 {
+    fn additional_sustenance(&self, good: &Good) -> u32 {
         let survival_days = self.count_timesteps_till_death(None);
-        let additional_survival_days = &self.count_timesteps_till_death(Some(goods_unit));
+        let additional_survival_days = &self.count_timesteps_till_death(Some(&good));
         additional_survival_days - survival_days
         // let extra_count = additional_survival_days - survival_days;
         // if extra_count == 0 {
@@ -154,10 +187,10 @@ impl RationalAgent {
     /// Counts the number of timesteps that the agent can survive with the current
     /// stock, plus one unit of an optional additional good, assuming only consumption
     /// (i.e. no production/acquision of new goods).
-    fn count_timesteps_till_death(&self, additional_goods_unit: Option<&GoodsUnit>) -> UInt {
+    fn count_timesteps_till_death(&self, additional_good: Option<&Good>) -> UInt {
         let mut dummy_agent = self.clone();
-        if let Some(goods_unit) = additional_goods_unit {
-            dummy_agent.acquire(goods_unit.clone(), 1);
+        if let Some(good) = additional_good {
+            dummy_agent.acquire(GoodsUnit::new(good), 1);
         }
         let mut count = 0;
         // while dummy_agent.is_alive() {
@@ -248,12 +281,12 @@ mod tests {
 
         // 1 additional unit of berries provides no additional sustenance when stock is empty.
         // So the marginal value of 1 unit of berries is zero.
-        assert_eq!(agent.marginal_unit_value(&berries_unit), 0.0);
+        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.0);
 
         agent.acquire(berries_unit, 1);
         // 1 additional unit of berries provides no additional sustenance when stock is 1 unit of berries.
         // So the marginal value of 1 unit of berries is zero.
-        assert_eq!(agent.marginal_unit_value(&berries_unit), 0.0);
+        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.0);
 
         agent.acquire(berries_unit, 1);
 
@@ -261,7 +294,7 @@ mod tests {
         // stock is 2 units of berries. Minimum time required to produce sustanance
         // equivalent to additional 1 unit of berries is 1/4 days (by producing berries).
         // So the marginal value of 1 unit of berries is 1/4.
-        assert_eq!(agent.marginal_unit_value(&berries_unit), 0.25);
+        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.25);
 
         // Start again with an empty stock.
         let mut agent = RationalAgent::new(1, daily_nutrition);
@@ -270,19 +303,20 @@ mod tests {
 
         // 1 additional unit of fish provides no additional sustenance when stock is empty.
         // So the marginal value of 1 unit of fish is zero.
-        assert_eq!(agent.marginal_unit_value(&fish_unit), 0.0);
+        assert_eq!(agent.marginal_unit_value(&Good::Fish), 0.0);
 
         agent.acquire(fish_unit, 1);
         // 1 additional unit of fish provides no additional sustenance when stock is 1 unit of fish.
         // So the marginal value of 1 unit of fish is zero.
-        assert_eq!(agent.marginal_unit_value(&fish_unit), 0.0);
+        assert_eq!(agent.marginal_unit_value(&Good::Fish), 0.0);
 
         agent.acquire(fish_unit, 1);
         // 1 additional unit of fish provides 1 day of additional sustenance when
         // stock is 2 units of fish. Minimum time required to produce sustanance
         // equivalent to additional 1 unit of fish is 1/4 days (by producing berries, not fish!).
         // So the marginal value of 1 unit of fish is 1/4.
-        assert_eq!(agent.marginal_unit_value(&berries_unit), 0.25);
+        assert_eq!(agent.marginal_unit_value(&Good::Fish), 0.25);
+        assert_eq!(agent.marginal_unit_value(&Good::Berries), 0.25);
     }
 
     #[test]
@@ -294,22 +328,22 @@ mod tests {
 
         // No additional sustenance from 1 unit of berries (when starting from none).
         let expected = 0;
-        assert_eq!(agent.additional_sustenance(&berries_unit), expected);
+        assert_eq!(agent.additional_sustenance(&Good::Berries), expected);
 
         // No additional sustenance from 1 unit of berries (when starting from 1 unit).
         agent.acquire(berries_unit, 1);
         let expected = 0;
-        assert_eq!(agent.additional_sustenance(&berries_unit), expected);
+        assert_eq!(agent.additional_sustenance(&Good::Berries), expected);
 
         // One additional day's sustenance from 1 unit of berries (when starting from 2 units).
         agent.acquire(berries_unit, 1);
 
         let expected = 1;
-        assert_eq!(agent.additional_sustenance(&berries_unit), expected);
+        assert_eq!(agent.additional_sustenance(&Good::Berries), expected);
 
         // One additional day's sustenance from 1 unit of fish (when starting from 2 units).
         let fish_unit = GoodsUnit::new(&Good::Fish);
-        assert_eq!(agent.additional_sustenance(&fish_unit), expected);
+        assert_eq!(agent.additional_sustenance(&Good::Berries), expected);
     }
 
     #[test]
@@ -341,13 +375,16 @@ mod tests {
         // *with one additional unit of berries* is one.
         let expected = 1;
         assert_eq!(
-            agent.count_timesteps_till_death(Some(&berries_unit)),
+            agent.count_timesteps_till_death(Some(&Good::Berries)),
             expected
         );
         // With two units of berries the timesteps till death
         // *with one additional unit of fish* is one.
         let expected = 1;
-        assert_eq!(agent.count_timesteps_till_death(Some(&fish_unit)), expected);
+        assert_eq!(
+            agent.count_timesteps_till_death(Some(&Good::Fish)),
+            expected
+        );
 
         agent.acquire(berries_unit, 1);
 
@@ -371,7 +408,7 @@ mod tests {
         // *with one additional unit of berries* is two.
         let expected = 2;
         assert_eq!(
-            agent.count_timesteps_till_death(Some(&berries_unit)),
+            agent.count_timesteps_till_death(Some(&Good::Berries)),
             expected
         );
 
@@ -390,6 +427,9 @@ mod tests {
         // With 6 units of berries & 2 units of fish the timesteps
         // till death *with one additional unit of fish* is three.
         let expected = 3;
-        assert_eq!(agent.count_timesteps_till_death(Some(&fish_unit)), expected);
+        assert_eq!(
+            agent.count_timesteps_till_death(Some(&Good::Fish)),
+            expected
+        );
     }
 }

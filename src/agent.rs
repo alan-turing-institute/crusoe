@@ -23,7 +23,7 @@ pub trait Agent {
     fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit>;
     /// Returns the number of units of the good produced per day,
     /// given the agent's existing stock.
-    fn productivity(&self, good: Good) -> Productivity {
+    fn productivity(&self, good: &Good) -> Productivity {
         // TODO: make configurable.
         // Note: can modify default productivity for different agents (for specialisation).
         good.default_productivity(&self.stock())
@@ -75,7 +75,7 @@ pub trait Agent {
     fn act(&mut self, action: Action) {
         match action {
             Action::ProduceGood(good) => {
-                let productivity = self.productivity(good);
+                let productivity = self.productivity(&good);
                 match productivity {
                     Productivity::Immediate(qty) => self.acquire(GoodsUnit::new(&good), qty),
                     Productivity::Delayed(_) => {
