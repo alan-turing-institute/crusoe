@@ -17,10 +17,10 @@ impl From<ActionFlattened> for Action {
             ActionFlattened::ProduceFish => Action::ProduceGood(Good::Fish),
             ActionFlattened::ProduceBasket => Action::ProduceGood(Good::Basket),
             ActionFlattened::ProduceSpear => Action::ProduceGood(Good::Spear),
-            ActionFlattened::ProduceSmoker => Action::Leisure, // Placeholder for future goods
-            ActionFlattened::ProduceBoat => Action::Leisure,   // Placeholder for future goods
-            ActionFlattened::ProduceTimber => Action::Leisure, // Placeholder for future goods
-            ActionFlattened::ProduceAxe => Action::Leisure,    // Placeholder for future goods
+            ActionFlattened::ProduceSmoker => Action::ProduceGood(Good::Smoker),
+            ActionFlattened::ProduceBoat => Action::ProduceGood(Good::Boat),
+            ActionFlattened::ProduceTimber => Action::ProduceGood(Good::Timber),
+            ActionFlattened::ProduceAxe => Action::ProduceGood(Good::Axe),
             ActionFlattened::Leisure => Action::Leisure,
         }
     }
