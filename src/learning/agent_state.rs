@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use strum::IntoEnumIterator;
 
 use crate::{
-    goods::Good,
+    goods::GoodsUnitLevel,
     stock::{InvLevel, RemainingLevel, Stock},
 };
 
@@ -22,30 +21,20 @@ impl From<(RemainingLevel, InvLevel)> for LevelPair {
         LevelPair(pair.0, pair.1)
     }
 }
-impl DiscrRep<Good, LevelPair> for Stock {
-    fn representation(&self) -> Vec<(Good, LevelPair)> {
-        let hm: HashMap<Good, LevelPair> = self
-            .discretise()
-            .stock
-            .into_iter()
-            .map(|(good, level)| (good.good, LevelPair::from((good.remaining_lifetime, level))))
-            .collect();
-        Good::iter()
-            .map(|good| {
+
+impl DiscrRep<GoodsUnitLevel, InvLevel> for Stock {
+    fn representation(&self) -> Vec<(GoodsUnitLevel, InvLevel)> {
+        let hm: HashMap<GoodsUnitLevel, InvLevel> = self.discretise().stock.into_iter().collect();
+        GoodsUnitLevel::iter()
+            .map(|good_unit_level| {
                 (
-                    good,
-                    hm.get(&good)
+                    good_unit_level,
+                    hm.get(&good_unit_level)
                         .cloned()
-                        .unwrap_or(LevelPair(RemainingLevel::Critical, InvLevel::Critical)),
+                        // .unwrap_or(InvLevel::Critical),
+                        .unwrap_or(InvLevel::Low),
                 )
             })
             .collect()
-    }
-}
-
-impl LevelPair {
-    /// Iterate over all possible combinations of InvLevel for LevelPair
-    pub fn iter() -> impl Iterator<Item = LevelPair> {
-        InvLevel::iter().flat_map(|a| RemainingLevel::iter().map(move |b| LevelPair::from((b, a))))
     }
 }

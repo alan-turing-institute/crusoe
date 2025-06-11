@@ -46,6 +46,7 @@ pub enum RemainingLevel { // lifetime
     Low,
     //Medium,
     High,
+
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -109,7 +110,8 @@ impl Stock {
                         remaining_lifetime,
                     },
                     qty,
-                ) if *qty >= config.agent.inv_level_med && *qty < config.agent.inv_level_high => {
+                    // ) if *qty >= config.agent.inv_level_med && *qty < config.agent.inv_level_high => {
+                ) if *qty < config.agent.inv_level_high => {
                     match *remaining_lifetime {
                         x if x < config.agent.remaining_level_high => {
                             ds.insert(
@@ -145,7 +147,6 @@ impl Stock {
                             InvLevel::High,
                         );
                     }
-
                     _ => unreachable!("No other lifetime levels to handle"),
                 },
                 _ => unreachable!("No other quantity levels to handle"),

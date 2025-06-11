@@ -1,10 +1,10 @@
 use crusoe::{
     actions::ActionFlattened as Action,
     config::Config,
-    goods::Good,
+    goods::{Good, GoodsUnitLevel},
     learning::{agent_state::LevelPair, tabular_rl::SARSAModel},
     simulation::Simulation,
-    stock::Stock,
+    stock::{InvLevel, Stock},
 };
 use strum::IntoEnumIterator;
 
@@ -18,11 +18,10 @@ fn main() {
     );
     let num_agents = 1u32;
     let multi_policy = false;
-    println!("----");
     let mut model: SARSAModel<Stock, _, _, _> = SARSAModel::new(
         (0..num_agents).collect(),
-        Good::iter().collect::<Vec<Good>>(),
-        LevelPair::iter().collect::<Vec<LevelPair>>(),
+        GoodsUnitLevel::iter().collect::<Vec<GoodsUnitLevel>>(),
+        InvLevel::iter().collect::<Vec<InvLevel>>(),
         Action::iter().collect::<Vec<Action>>(),
         multi_policy,
     );
