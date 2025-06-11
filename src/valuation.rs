@@ -335,15 +335,13 @@ mod tests {
         let expected = 0;
         assert_eq!(agent.additional_sustenance(&Good::Berries), expected);
 
-        // One additional day's sustenance from 1 unit of berries (when starting from 2 units).
         agent.acquire(berries_unit, 1);
 
         let expected = 1;
+        // One additional day's sustenance from 1 unit of berries (when starting from 2 units).
         assert_eq!(agent.additional_sustenance(&Good::Berries), expected);
-
-        // One additional day's sustenance from 1 unit of fish (when starting from 2 units).
-        let fish_unit = GoodsUnit::new(&Good::Fish);
-        assert_eq!(agent.additional_sustenance(&Good::Berries), expected);
+        // One additional day's sustenance from 1 unit of fish (when starting from 2 units of berries).
+        assert_eq!(agent.additional_sustenance(&Good::Fish), expected);
     }
 
     #[test]
