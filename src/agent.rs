@@ -217,6 +217,10 @@ mod tests {
             2,
         );
         assert_eq!(agent.stock, expected);
+        agent.consume(2);
+        // Expected stock after consumption of the remaining 2 units
+        // of berries is empty.
+        assert!(agent.stock.stock.is_empty());
     }
 
     #[test]
