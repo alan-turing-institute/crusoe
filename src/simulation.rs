@@ -78,7 +78,8 @@ impl Simulation {
             if !agent.is_alive() {
                 continue; // Skip dead agents
             }
-            agent.step_forward(Some(model));
+            let action = agent.choose_action_with_model(model);
+            agent.step_forward(Some(action));
             self.agent_hist
                 // TODO: update to use more than just agent with ID 0
                 .entry(0)
