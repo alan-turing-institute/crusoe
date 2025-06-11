@@ -46,7 +46,7 @@ impl Stock {
         let _ = &self.partial_stock.push(good);
     }
 
-    /// Remove a units of a good from the stock.
+    /// Remove units of a good from the stock.
     pub fn remove(&mut self, good: &GoodsUnit, quantity: UInt) {
         let existing_qty = &self.stock.get(good);
         match existing_qty.as_ref() {

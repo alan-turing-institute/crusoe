@@ -15,22 +15,104 @@ pub trait Agent {
     /// The stock of goods currently held by the agent.
     fn stock(&self) -> &Stock;
     /// The marginal productivity of the agent, given their current stock.
-    fn productivity(&self, good: Good) -> Productivity;
+    fn stock_mut(&mut self) -> &mut Stock;
+    fn set_stock(&mut self, stock: Stock);
+    fn acquire(&mut self, goods_unit: GoodsUnit, quantity: UInt);
+    fn acquire_partial(&mut self, partial_goods_unit: PartialGoodsUnit);
+    fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit>;
+    /// Returns the number of units of the good produced per day,
+    /// given the agent's existing stock.
+    fn productivity(&self, good: Good) -> Productivity {
+        // TODO: make configurable.
+        // Note: can modify default productivity for different agents (for specialisation).
+        good.default_productivity(&self.stock())
+    }
     // fn productivity(&self, good: Good) -> (UInt, bool);
     /// The agent's choice of action in the next time step.
     fn choose_action(&mut self) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
-    fn consume(&mut self, nutritional_units: UInt) -> bool;
+    // fn consume(&mut self, nutritional_units: UInt) -> bool;
+    /// Consume the requisite units of food per time unit.
+    /// Return false if insufficient stock was available.
+    fn consume(&mut self, nutritional_units: UInt) -> bool {
+        let mut outstanding_nutritional_units = nutritional_units;
+        let mut stock_change: Vec<_> = vec![];
+        while let Some((good, qty)) = self.stock().next_consumables().into_iter().next() {
+            // self.stock.remove(good, *qty);
+            // to_remove.push((good.clone(), *qty));
+            // If qty_remaining < nutritional_units, recursively call consume()
+            if *qty > outstanding_nutritional_units {
+                // return self.consume(nutritional_units - qty);
+                stock_change.push((good.clone(), outstanding_nutritional_units));
+                outstanding_nutritional_units = 0;
+                break;
+            } else {
+                stock_change.push((good.clone(), *qty));
+                outstanding_nutritional_units -= *qty;
+            }
+        }
+        // Update stock
+        for (good, qty) in stock_change {
+            self.stock_mut().remove(&good, qty);
+        }
+        // Returns false if the agent dies from lack of nutrients.
+        if outstanding_nutritional_units > 0 {
+            return false;
+        }
+        true
+    }
+
     /// Get the complete history of agent actions.
     fn action_history(&self) -> Vec<Action>;
     /// Get the complete history of agent stocks.
     fn stock_history(&self) -> Vec<Stock>;
     /// Return true if the agent is still alive.
+    fn update_stock_history(&mut self);
     fn is_alive(&self) -> bool;
+    fn set_liveness(&mut self, value: bool);
     /// Execture the given action.
-    fn act(&mut self, action: Action);
+    // fn act(&mut self, action: Action);
+    fn act(&mut self, action: Action) {
+        match action {
+            Action::ProduceGood(good) => {
+                let productivity = self.productivity(good);
+                match productivity {
+                    Productivity::Immediate(qty) => self.acquire(GoodsUnit::new(&good), qty),
+                    Productivity::Delayed(_) => {
+                        if let Some(mut partial_good) = self.get_partial(good) {
+                            // If a partial good already exists, do the next step of production.
+                            partial_good.increment_production();
+                        } else {
+                            // Otherwise create a new partial good.
+                            self.acquire_partial(PartialGoodsUnit::new(&good).expect(
+                                "Delayed productivity implies multiple timesteps to produce.",
+                            ))
+                        }
+                    }
+                    Productivity::None => {} // Wasted action.
+                }
+            }
+            Action::Leisure => (),
+        }
+    }
     /// Step the agent forward by one time step.
-    fn step_forward(&mut self);
+    // fn step_forward(&mut self);
+    fn step_forward(&mut self) {
+        // Select action
+        let action = self.choose_action();
+        // Perform action, which updates the agent's stock
+        self.act(action);
+        // Consume stock, which updates whether the agent is alive
+        // TODO: make required nutritional_units per time unit configurable.
+        let is_alive = self.consume(1);
+        self.set_liveness(is_alive);
+        // Degrade the agent's stock.
+        // self.stock_history.push(self.stock.clone());
+        // self.append_to_stock_history(self.stock().clone());
+        self.update_stock_history();
+        // self.stock = self.stock.step_forward(action);
+        self.set_stock(self.stock().step_forward(action));
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,7 +138,7 @@ impl CrusoeAgent {
 
 impl Agent for CrusoeAgent {
     fn get_id(&self) -> u64 {
-        todo!()
+        self.id
     }
 
     fn get_name(&self) -> &str {
@@ -67,17 +149,25 @@ impl Agent for CrusoeAgent {
         &self.stock
     }
 
-    // TODO: Some capital goods take multiple time units to produce.
-    /// Returns the number of units of the good produced per day, given the
-    /// agent's existing stock. The boolean flag indicates whether the
-    /// integer in the first slot should be interpreted as a fraction.
-    /// e.g. (5, false) indicates  5 units can be produced in one day,
-    /// while (5, true) indicates that a single unit takes 5 days to produce.
-    fn productivity(&self, good: Good) -> Productivity {
-        // TODO: make configurable.
-        // TODO: can modify default productivity for different agents (for specialisation).
-        good.default_productivity(&self.stock)
+    fn stock_mut(&mut self) -> &mut Stock {
+        &mut self.stock
     }
+
+    fn set_stock(&mut self, stock: Stock) {
+        self.stock = stock;
+    }
+
+    // // TODO: Some capital goods take multiple time units to produce.
+    // /// Returns the number of units of the good produced per day, given the
+    // /// agent's existing stock. The boolean flag indicates whether the
+    // /// integer in the first slot should be interpreted as a fraction.
+    // /// e.g. (5, false) indicates  5 units can be produced in one day,
+    // /// while (5, true) indicates that a single unit takes 5 days to produce.
+    // fn productivity(&self, good: Good) -> Productivity {
+    //     // TODO: make configurable.
+    //     // TODO: can modify default productivity for different agents (for specialisation).
+    //     good.default_productivity(&self.stock)
+    // }
 
     // TODO: consider moving teh action_history update into act method, so
     // self can be immutable here.
@@ -92,35 +182,35 @@ impl Agent for CrusoeAgent {
     // TODO: initially 1 unit of nutrition required per time unit
     // TODO: in future, make this e.g. 3 units which could be 1 berries + 2 fish.
 
-    /// Consume the requisite units of food per time unit.
-    /// Return false if insufficient stock was available.
-    fn consume(&mut self, nutritional_units: UInt) -> bool {
-        let mut outstanding_nutritional_units = nutritional_units;
-        let mut stock_change: Vec<_> = vec![];
-        while let Some((good, qty)) = self.stock.next_consumables().into_iter().next() {
-            // self.stock.remove(good, *qty);
-            // to_remove.push((good.clone(), *qty));
-            // If qty_remaining < nutritional_units, recursively call consume()
-            if *qty > outstanding_nutritional_units {
-                // return self.consume(nutritional_units - qty);
-                stock_change.push((good.clone(), outstanding_nutritional_units));
-                outstanding_nutritional_units = 0;
-                break;
-            } else {
-                stock_change.push((good.clone(), *qty));
-                outstanding_nutritional_units -= *qty;
-            }
-        }
-        // Update stock
-        for (good, qty) in stock_change {
-            self.stock.remove(&good, qty);
-        }
-        // Returns false if the agent dies from lack of nutrients
-        if outstanding_nutritional_units > 0 {
-            return false;
-        }
-        true
-    }
+    // /// Consume the requisite units of food per time unit.
+    // /// Return false if insufficient stock was available.
+    // fn consume(&mut self, nutritional_units: UInt) -> bool {
+    //     let mut outstanding_nutritional_units = nutritional_units;
+    //     let mut stock_change: Vec<_> = vec![];
+    //     while let Some((good, qty)) = self.stock.next_consumables().into_iter().next() {
+    //         // self.stock.remove(good, *qty);
+    //         // to_remove.push((good.clone(), *qty));
+    //         // If qty_remaining < nutritional_units, recursively call consume()
+    //         if *qty > outstanding_nutritional_units {
+    //             // return self.consume(nutritional_units - qty);
+    //             stock_change.push((good.clone(), outstanding_nutritional_units));
+    //             outstanding_nutritional_units = 0;
+    //             break;
+    //         } else {
+    //             stock_change.push((good.clone(), *qty));
+    //             outstanding_nutritional_units -= *qty;
+    //         }
+    //     }
+    //     // Update stock
+    //     for (good, qty) in stock_change {
+    //         self.stock.remove(&good, qty);
+    //     }
+    //     // Returns false if the agent dies from lack of nutrients
+    //     if outstanding_nutritional_units > 0 {
+    //         return false;
+    //     }
+    //     true
+    // }
 
     fn action_history(&self) -> Vec<Action> {
         self.action_history.clone()
@@ -129,46 +219,69 @@ impl Agent for CrusoeAgent {
     fn stock_history(&self) -> Vec<Stock> {
         self.stock_history.clone()
     }
+
+    fn update_stock_history(&mut self) {
+        self.stock_history.push(self.stock().clone());
+    }
+
     fn is_alive(&self) -> bool {
         self.is_alive
     }
 
-    fn act(&mut self, action: Action) {
-        match action {
-            Action::ProduceGood(good) => {
-                let productivity = self.productivity(good);
-                match productivity {
-                    Productivity::Immediate(qty) => self.stock.add(GoodsUnit::new(&good), qty),
-                    Productivity::Delayed(_) => {
-                        if let Some(mut partial_good) = self.stock.get_partial(good) {
-                            // If a partial good already exists, do the next step of production.
-                            partial_good.increment_production();
-                        } else {
-                            // Otherwise create a new partial good.
-                            self.stock.add_partial(PartialGoodsUnit::new(&good).expect(
-                                "Delayed productivity implies multiple timesteps to produce.",
-                            ))
-                        }
-                    }
-                    Productivity::None => {} // Wasted action.
-                }
-            }
-            Action::Leisure => (),
-        }
+    fn set_liveness(&mut self, value: bool) {
+        self.is_alive = value;
     }
 
-    fn step_forward(&mut self) {
-        // Select action
-        let action = self.choose_action();
-        // Perform action, which updates the agent's stock
-        self.act(action);
-        // Consume stock, which updates whether the agent is alive
-        // TODO: make required nutritional_units per time unit configurable.
-        self.is_alive = self.consume(1);
-        // Degrade the agent's stock.
-        self.stock_history.push(self.stock.clone());
-        self.stock = self.stock.step_forward(action);
+    // fn act(&mut self, action: Action) {
+    //     match action {
+    //         Action::ProduceGood(good) => {
+    //             let productivity = self.productivity(good);
+    //             match productivity {
+    //                 Productivity::Immediate(qty) => self.stock.add(GoodsUnit::new(&good), qty),
+    //                 Productivity::Delayed(_) => {
+    //                      // IMP TODO: stock.get_partial() ought to return a Option<&mut PartialGoodsUnit>
+    //                     if let Some(mut partial_good) = self.stock.get_partial(good) {
+    //                         // If a partial good already exists, do the next step of production.
+    //                         partial_good.increment_production();
+    //                     } else {
+    //                         // Otherwise create a new partial good.
+    //                         self.stock.add_partial(PartialGoodsUnit::new(&good).expect(
+    //                             "Delayed productivity implies multiple timesteps to produce.",
+    //                         ))
+    //                     }
+    //                 }
+    //                 Productivity::None => {} // Wasted action.
+    //             }
+    //         }
+    //         Action::Leisure => (),
+    //     }
+    // }
+
+    fn acquire(&mut self, goods_unit: GoodsUnit, quantity: UInt) {
+        self.stock.add(goods_unit, quantity);
     }
+
+    fn acquire_partial(&mut self, partial_goods_unit: PartialGoodsUnit) {
+        self.stock.add_partial(partial_goods_unit);
+    }
+
+    fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit> {
+        self.stock.get_partial(good)
+    }
+
+    // // TODO: move into the trait as a default impl.
+    // fn step_forward(&mut self) {
+    //     // Select action
+    //     let action = self.choose_action();
+    //     // Perform action, which updates the agent's stock
+    //     self.act(action);
+    //     // Consume stock, which updates whether the agent is alive
+    //     // TODO: make required nutritional_units per time unit configurable.
+    //     self.is_alive = self.consume(1);
+    //     // Degrade the agent's stock.
+    //     self.stock_history.push(self.stock.clone());
+    //     self.stock = self.stock.step_forward(action);
+    // }
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

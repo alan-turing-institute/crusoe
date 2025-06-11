@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-
 use crate::{UInt, actions::Action, stock::Stock};
+use serde::{Deserialize, Serialize};
+use strum_macros::EnumIter;
 
 type Quantity = UInt;
 type Interval = UInt;
@@ -11,8 +11,19 @@ pub enum Productivity {
     None,
 }
 
+impl Productivity {
+    /// Returns the productivity per unit time.
+    pub fn per_unit(&self) -> Option<f32> {
+        match self {
+            Productivity::Immediate(quantity) => Some(*quantity as f32),
+            Productivity::Delayed(interval) => Some((1 as f32) / (*interval as f32)),
+            Productivity::None => None,
+        }
+    }
+}
+
 // A good in the abstract (as opposed to particular units of a good).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Good {
     Berries,
     Fish,
@@ -124,7 +135,10 @@ impl Good {
         }
     }
 
-    /// Returns the capital goods that are required at every timestep to produce this good.
+    /// Returns the capital goods that are *required* at every timestep to produce this good.
+    /// This is distinct from the `is_produced_using` method in that the inputs reported
+    /// here are required for production to take place, as opposed to merely productivity-enhancing.
+    /// However there is some overlap.
     pub fn required_inputs(&self) -> Vec<Good> {
         match self {
             Good::Berries => Vec::new(),
@@ -155,6 +169,25 @@ impl Good {
             Good::Axe => Some(2),
         }
     }
+
+    // Hopefully this isn't needed if we adjust the productivity instead.
+    // i.e. every consumer good is measured in the same units as the config
+    // parameter `daily_nutrition`.
+    //
+    // // TODO: make sustanance levels configurable.
+    // /// Returns the number of units required for 1 day's sustanance.
+    // pub fn sustanance(&self) -> Option<UInt> {
+    //     match self {
+    //         Good::Berries => Some(3),
+    //         Good::Fish => Some(1),
+    //         Good::Basket => None,
+    //         Good::Spear => None,
+    //         Good::Smoker => None,
+    //         Good::Boat => None,
+    //         Good::Timber => None,
+    //         Good::Axe => None,
+    //     }
+    // }
 }
 
 // For units of goods, each has a lifetime remaining value before it is destroyed.
