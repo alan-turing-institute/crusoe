@@ -185,7 +185,8 @@ impl Agent for CrusoeAgent {
         self.act(action);
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
-        self.is_alive = self.consume(1);
+        // self.is_alive = self.consume(1);
+        self.consume(1);
         // Degrade the agent's stock.
         self.stock_history.push(self.stock.clone());
         self.stock = self.stock.step_forward(action);

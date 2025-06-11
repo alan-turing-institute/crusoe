@@ -50,7 +50,7 @@ impl Simulation {
         agent_hist.insert(0, History::new());
         Simulation {
             time: 0,
-            agents: vec![AgentType::Crusoe(CrusoeAgent::new(1))], // Initialize with one Crusoe agent
+            agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
             config: Config {
                 max_time: 100,
                 ..Default::default()
@@ -80,7 +80,8 @@ impl Simulation {
             }
             agent.step_forward(Some(model));
             self.agent_hist
-                .entry(1)
+                // TODO: update to use more than just agent with ID 0
+                .entry(0)
                 .or_insert_with(History::new)
                 .push(SAR::new(
                     agent.stock().clone(),
