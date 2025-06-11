@@ -30,10 +30,10 @@ fn main() {
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);
         println!("Time: {}, Agents: {}", sim.time, sim.agents.len());
-        println!("Actions:  {0:#?}", sim.agents[0]);
         sim.time += 1;
 
         // Update model given agent history
         model.step(sim.time as i32, &sim.agent_hist);
     }
+    println!("Actions:  {0:?}", sim.agents[0]);
 }
