@@ -31,18 +31,17 @@ pub trait Agent {
     /// The agent's choice of action in the next time step.
     fn choose_action(&mut self) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
-    // fn consume(&mut self, nutritional_units: UInt) -> bool;
-    /// Consume the requisite units of food per time unit.
-    /// Return false if insufficient stock was available.
     fn consume(&mut self, nutritional_units: UInt) -> bool {
+        let consumables = self.stock().next_consumables();
+        if consumables.is_empty() {
+            // println!("DEBUG: consume - no consumables available");
+            return false;
+        }
+
         let mut outstanding_nutritional_units = nutritional_units;
         let mut stock_change: Vec<_> = vec![];
-        while let Some((good, qty)) = self.stock().next_consumables().into_iter().next() {
-            // self.stock.remove(good, *qty);
-            // to_remove.push((good.clone(), *qty));
-            // If qty_remaining < nutritional_units, recursively call consume()
+        for (good, qty) in consumables {
             if *qty > outstanding_nutritional_units {
-                // return self.consume(nutritional_units - qty);
                 stock_change.push((good.clone(), outstanding_nutritional_units));
                 outstanding_nutritional_units = 0;
                 break;
@@ -55,7 +54,7 @@ pub trait Agent {
         for (good, qty) in stock_change {
             self.stock_mut().remove(&good, qty);
         }
-        // Returns false if the agent dies from lack of nutrients.
+        // Returns false if the agent dies from lack of nutrients
         if outstanding_nutritional_units > 0 {
             return false;
         }
@@ -97,9 +96,12 @@ pub trait Agent {
     }
     /// Step the agent forward by one time step.
     // fn step_forward(&mut self);
-    fn step_forward(&mut self) {
-        // Select action
-        let action = self.choose_action();
+    fn step_forward(&mut self, action: Option<Action>) {
+        // Select action if not given.
+        let action = match action {
+            Some(a) => a,
+            None => self.choose_action(),
+        };
         // Perform action, which updates the agent's stock
         self.act(action);
         // Consume stock, which updates whether the agent is alive
@@ -328,12 +330,14 @@ mod tests {
             2,
         );
         assert_eq!(agent.stock, expected);
+        agent.consume(2);
+        // Expected stock after consumption of the remaining 2 units
+        // of berries is empty.
+        assert!(agent.stock.stock.is_empty());
     }
 
     #[test]
     fn test_step_forward() {
-        // Note: id parameter is the random seed and we assume
-        // the first action it chooses does not affect the stock
         let mut agent = CrusoeAgent::new(1);
         agent.stock.add(
             GoodsUnit {
@@ -342,7 +346,7 @@ mod tests {
             },
             5,
         );
-        agent.step_forward();
+        agent.step_forward(Some(Action::Leisure));
         // Expected stock after one step forward is 4 units of berries
         // (one unit was consumed) with remaining lifetime 9.
         let mut expected = Stock::default();

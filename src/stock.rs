@@ -33,6 +33,9 @@ where
 impl Stock {
     /// Add units of a good to the stock.
     pub fn add(&mut self, good: GoodsUnit, quantity: UInt) {
+        if quantity == 0 {
+            panic!("Cannot add a zero quantity of goods to stock.");
+        }
         if let Some(existing_qty) = &self.stock.insert(good, quantity) {
             let _ = &self.stock.insert(good, quantity + *existing_qty);
         }
@@ -46,12 +49,15 @@ impl Stock {
         let _ = &self.partial_stock.push(good);
     }
 
-    /// Remove units of a good from the stock.
-    pub fn remove(&mut self, good: &GoodsUnit, quantity: UInt) {
-        let existing_qty = &self.stock.get(good);
+    /// Remove a units of a good from the stock.
+    pub fn remove(&mut self, goods_unit: &GoodsUnit, quantity: UInt) {
+        let existing_qty = &self.stock.get(goods_unit);
         match existing_qty.as_ref() {
-            Some(&&qty) if qty >= quantity => {
-                self.stock.insert(*good, qty - quantity);
+            Some(&&qty) if qty > quantity => {
+                self.stock.insert(*goods_unit, qty - quantity);
+            }
+            Some(&&qty) if qty == quantity => {
+                self.stock.remove(goods_unit);
             }
             Some(_) | None => panic!("Good not found in stock"),
         };
@@ -116,7 +122,7 @@ impl Stock {
     pub fn next_consumables(&self) -> Vec<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
-            .filter(|(good, _)| {
+            .filter(|(good, qty)| {
                 matches!(
                     **good,
                     GoodsUnit {
