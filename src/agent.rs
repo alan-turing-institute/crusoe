@@ -95,14 +95,16 @@ impl Agent for CrusoeAgent {
     /// Consume the requisite units of food per time unit.
     /// Return false if insufficient stock was available.
     fn consume(&mut self, nutritional_units: UInt) -> bool {
+        let consumables = self.stock.next_consumables();
+        if consumables.is_empty() {
+            // println!("DEBUG: consume - no consumables available");
+            return false;
+        }
+
         let mut outstanding_nutritional_units = nutritional_units;
         let mut stock_change: Vec<_> = vec![];
-        while let Some((good, qty)) = self.stock.next_consumables().into_iter().next() {
-            // self.stock.remove(good, *qty);
-            // to_remove.push((good.clone(), *qty));
-            // If qty_remaining < nutritional_units, recursively call consume()
+        for (good, qty) in consumables {
             if *qty > outstanding_nutritional_units {
-                // return self.consume(nutritional_units - qty);
                 stock_change.push((good.clone(), outstanding_nutritional_units));
                 outstanding_nutritional_units = 0;
                 break;
@@ -218,6 +220,10 @@ mod tests {
             2,
         );
         assert_eq!(agent.stock, expected);
+        agent.consume(2);
+        // Expected stock after consumption of the remaining 2 units
+        // of berries is empty.
+        assert!(agent.stock.stock.is_empty());
     }
 
     #[test]
