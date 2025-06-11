@@ -11,7 +11,7 @@ use strum::IntoEnumIterator;
 fn main() {
     let mut sim = Simulation::new(
         Config {
-            max_time: 10000,
+            max_time: 1000000,
             daily_nutrition: 3,
             ..Config::default()
         },
@@ -31,14 +31,15 @@ fn main() {
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);
         if sim.time % 1000 == 0 {
+            let n_steps = 10000;
             let avg_reward = sim.agents[0]
                 .reward_history()
                 .iter()
                 .rev()
-                .take(100)
+                .take(n_steps)
                 .map(|el| el.val as f32)
                 .sum::<f32>()
-                / 100.;
+                / n_steps as f32;
             println!("Time: {}, Avg. Reward: {}", sim.time, avg_reward)
         }
         sim.time += 1;

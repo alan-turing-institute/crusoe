@@ -219,7 +219,7 @@ impl Agent for CrusoeAgent {
         let reward = match (action, is_alive) {
             (Action::ProduceGood(_), true) => Reward::new(0),
             (Action::Leisure, true) => Reward::new(1),
-            (_, false) => Reward::new(-1000000),
+            (_, false) => Reward::new(-1),
         };
         self.reward_history.push(reward);
     }
