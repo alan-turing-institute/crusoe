@@ -50,7 +50,7 @@ impl Simulation {
             if !agent.is_alive() {
                 continue; // Skip dead agents
             }
-            agent.step_forward();
+            agent.step_forward(None);
         }
         self.after_step();
     }
