@@ -116,14 +116,14 @@ impl Stock {
     pub fn next_consumables(&self) -> Vec<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
-            .filter(|(good, _)| {
+            .filter(|(good, qty)| {
                 matches!(
                     **good,
                     GoodsUnit {
                         good: Good::Berries,
                         remaining_lifetime: _
                     }
-                )
+                ) && **qty > 0
             })
             .sorted_by_key(|(good, _)| {
                 if let GoodsUnit {
