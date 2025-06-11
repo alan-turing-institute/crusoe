@@ -72,7 +72,7 @@ impl Simulation {
         // - Update whether agent is alive
         // - Degrade the agent's stock
         // - End the day
-        println!("{:#?}", self);
+        // println!("{:#?}", self);
         for agent in self.agents.iter_mut() {
             // Check agent is alive
             if !agent.is_alive() {
