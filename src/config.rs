@@ -14,6 +14,8 @@ pub struct AgentConfig {
     pub inv_level_low: UInt,
     pub inv_level_med: UInt,
     pub inv_level_high: UInt,
+
+    // pub remaining_level_high: UInt,
 }
 
 impl Default for AgentConfig {
@@ -22,6 +24,7 @@ impl Default for AgentConfig {
             inv_level_low: 5,
             inv_level_med: 10,
             inv_level_high: 20,
+            // remaining_level_high: 5,
         }
     }
 }
