@@ -114,7 +114,8 @@ pub trait Agent {
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
         let is_alive = self.consume(1);
-        self.set_liveness(is_alive);
+        // TODO: removed set_liveness for now
+        // self.set_liveness(is_alive);
         // Degrade the agent's stock.
         // self.stock_history.push(self.stock.clone());
         // self.append_to_stock_history(self.stock().clone());
