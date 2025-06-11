@@ -17,7 +17,10 @@ impl Default for Simulation {
         Simulation {
             time: 0,
             agents: Vec::new(),
-            config: Config { max_time: 100 },
+            config: Config {
+                max_time: 100,
+                daily_nutrition: 3,
+            },
             verbose: true,
         }
     }
@@ -83,7 +86,13 @@ mod tests {
 
     #[test]
     fn test_simulation_initialization() {
-        let sim = Simulation::new(Config { max_time: 100 }, true);
+        let sim = Simulation::new(
+            Config {
+                max_time: 100,
+                daily_nutrition: 3,
+            },
+            true,
+        );
         assert_eq!(sim.time, 0);
         assert!(!sim.agents.is_empty());
         assert_eq!(sim.agents.len(), 1);
