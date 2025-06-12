@@ -156,7 +156,7 @@ impl RationalAgent {
         // to produce the capital good. For simplicity, we currently ignore discounting.
 
         let capital_goods_unit = GoodsUnit::new(capital_good);
-        // let mut dummy_agent = self.clone();
+        let mut dummy_agent = self.clone();
 
         // Take into account the possibility that the stock may already contain the capital good.
         let mut factor = 1.0;
@@ -169,11 +169,22 @@ impl RationalAgent {
             // Reduce the result by a factor equal to the lifetime of the new capital goods unit
             // divided by the number of days of use already available from the existing stock.
             factor = (capital_goods_unit.remaining_lifetime as f32) / (usable_days as f32);
+
+            // Remove any units of the capital good from the dummy agent's stock.
+            for goods_unit_in_stock in capital_goods_in_stock {
+                dummy_agent
+                    .stock_mut()
+                    .remove(goods_unit_in_stock.0, *goods_unit_in_stock.1);
+            }
         }
 
         match consumer_good.is_produced_using(capital_good) {
-            true => self.value_of_first_order_productivity(capital_good, consumer_good, factor),
-            false => self.value_of_first_order_improvement(capital_good, consumer_good, factor),
+            true => {
+                dummy_agent.value_of_first_order_productivity(capital_good, consumer_good, factor)
+            }
+            false => {
+                dummy_agent.value_of_first_order_improvement(capital_good, consumer_good, factor)
+            }
         }
     }
 
@@ -188,6 +199,10 @@ impl RationalAgent {
         }
         let capital_goods_unit = GoodsUnit::new(capital_good);
         let mut dummy_agent = self.clone();
+
+        // Check that the agent does *not* already have the capital good.
+        assert!(!dummy_agent.stock().contains(capital_good));
+
         // Get the productivity of the consumer good with and without the capital good.
         let productivity_sans = match dummy_agent.productivity(consumer_good) {
             Productivity::Immediate(quantity) => quantity,
@@ -204,6 +219,13 @@ impl RationalAgent {
         dummy_agent.stock_mut().remove(&capital_goods_unit, 1);
 
         // Check that the productivity with the capital good exceeds that without.
+        if productivity_with == productivity_sans {
+            println!("valuing capital good: {:?}", capital_good);
+            println!("for use producing consumer good: {:?}", consumer_good);
+            println!("productivity_with: {:?}", productivity_with);
+            println!("productivity_sans: {:?}", productivity_sans);
+            println!("stock: {:?}", dummy_agent.stock());
+        }
         assert!(productivity_with > productivity_sans);
 
         let mut sum: f32 = 0.0;
@@ -536,6 +558,16 @@ impl Agent for RationalAgent {
 mod tests {
     use super::*;
     use crate::goods::{Good, GoodsUnit};
+
+    #[test]
+    fn test_productivity() {
+        let daily_nutrition = 3;
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        assert!(agent.productivity(&Good::Fish) == Productivity::Immediate(2));
+        agent.acquire(GoodsUnit::new(&Good::Boat), 1);
+        assert!(agent.productivity(&Good::Fish) == Productivity::Immediate(20));
+    }
 
     #[test]
     fn test_value_generated_by_higher_order_good() {

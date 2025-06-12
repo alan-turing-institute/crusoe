@@ -8,6 +8,7 @@ use strum::IntoEnumIterator;
 type Quantity = UInt;
 type Interval = UInt;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter)]
 pub enum Productivity {
     Immediate(Quantity),
     Delayed(Interval),
@@ -90,11 +91,12 @@ impl Good {
             Good::Basket => return Productivity::Immediate(1),
             Good::Fish => {
                 // Productivity of fish is increased by access to a spear or a boat.
-                if stock.contains(&Good::Spear) {
-                    return Productivity::Immediate(10);
-                }
+                // Note: highest productivity must come first!
                 if stock.contains(&Good::Boat) {
                     return Productivity::Immediate(20);
+                }
+                if stock.contains(&Good::Spear) {
+                    return Productivity::Immediate(10);
                 }
                 Productivity::Immediate(2)
             }
