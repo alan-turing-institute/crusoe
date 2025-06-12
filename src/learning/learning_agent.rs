@@ -152,36 +152,6 @@ impl Agent for LearningAgent {
             Action::Leisure => (),
         }
     }
-
-    fn step_forward(&mut self, action: Option<Action>) {
-        // Select action if not given.
-        let action = match action {
-            Some(a) => a,
-            None => self.choose_action(),
-        };
-        // Perform action, which updates the agent's stock
-        self.act(action);
-        // Consume stock, which updates whether the agent is alive
-        // TODO: make required nutritional_units per time unit configurable.
-        // self.is_alive = self.consume(1);
-        let is_alive = self.consume(1);
-        // Degrade the agent's stock.
-        self.stock_history.push(self.stock.clone());
-        self.stock = self.stock.step_forward(action);
-        // Update reward history
-        match (action, is_alive) {
-            (Action::ProduceGood(_), true) => {
-                self.reward_history.push(Reward::new(0));
-            }
-            (Action::Leisure, true) => {
-                self.reward_history.push(Reward::new(POSITIVE_REWARD));
-            }
-            (_, false) => {
-                self.reward_history.push(Reward::new(NEGATIVE_REWARD));
-            }
-        };
-    }
-
     fn action_history(&self) -> &[Action] {
         &self.action_history
     }
