@@ -19,5 +19,5 @@ pub type UInt = u32;
 
 pub type Model = SARSAModel<Stock, GoodsUnitLevel, InvLevel, Action>;
 
-const POSITIVE_REWARD: Int = 1;
-const NEGATIVE_REWARD: Int = -100000;
+pub const POSITIVE_REWARD: Int = 1;
+pub const NEGATIVE_REWARD: Int = -100000;
