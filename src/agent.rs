@@ -3,10 +3,13 @@ use rand::SeedableRng;
 use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
-use crate::actions::Action;
+use crate::actions::{Action, ActionFlattened};
 use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
+use crate::learning::agent_state::DiscrRep;
+use crate::learning::learning_agent::LearningAgent;
+use crate::learning::reward::Reward;
 use crate::stock::Stock;
-use crate::{Int, UInt};
+use crate::{Model, NEGATIVE_REWARD, POSITIVE_REWARD, UInt};
 
 #[enum_dispatch]
 pub trait Agent {
@@ -30,6 +33,8 @@ pub trait Agent {
     // fn productivity(&self, good: Good) -> (UInt, bool);
     /// The agent's choice of action in the next time step.
     fn choose_action(&mut self) -> Action;
+    /// The agent's choice of action in the next time step.
+    fn choose_action_with_model(&mut self, model: &Model) -> Action;
     /// Consume nutritional units for one time step and return false if insufficient were unavailable.
     fn consume(&mut self, nutritional_units: UInt) -> bool {
         let consumables = self.stock().next_consumables();
@@ -62,11 +67,29 @@ pub trait Agent {
     }
 
     /// Get the complete history of agent actions.
-    fn action_history(&self) -> Vec<Action>;
+    fn action_history(&self) -> &[Action];
     /// Get the complete history of agent stocks.
-    fn stock_history(&self) -> Vec<Stock>;
+    fn stock_history(&self) -> &[Stock];
+    /// Get the reward history.
+    fn reward_history(&self) -> &[Reward];
+    /// Get the complete history of agent actions.
+    fn action_history_mut(&mut self) -> &mut Vec<Action>;
+    /// Get the complete history of agent stocks.
+    fn stock_history_mut(&mut self) -> &mut Vec<Stock>;
+    /// Get the reward history.
+    fn reward_history_mut(&mut self) -> &mut Vec<Reward>;
     /// Return true if the agent is still alive.
-    fn update_stock_history(&mut self);
+    fn update_stock_history(&mut self, stock: &Stock) {
+        self.stock_history_mut().push(stock.clone());
+    }
+    fn update_reward_history(&mut self, action: Action, is_alive: bool) {
+        let reward = match (action, is_alive) {
+            (Action::ProduceGood(_), true) => Reward::new(0),
+            (Action::Leisure, true) => Reward::new(POSITIVE_REWARD),
+            (_, false) => Reward::new(NEGATIVE_REWARD),
+        };
+        self.reward_history_mut().push(reward);
+    }
     fn is_alive(&self) -> bool;
     fn set_liveness(&mut self, value: bool);
     /// Execture the given action.
@@ -107,11 +130,13 @@ pub trait Agent {
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
         let is_alive = self.consume(1);
-        self.set_liveness(is_alive);
+        // TODO: removed set_liveness for now
+        // self.set_liveness(is_alive);
         // Degrade the agent's stock.
         // self.stock_history.push(self.stock.clone());
         // self.append_to_stock_history(self.stock().clone());
-        self.update_stock_history();
+        self.update_stock_history(&self.stock().clone());
+        self.update_reward_history(action, is_alive);
         // self.stock = self.stock.step_forward(action);
         self.set_stock(self.stock().step_forward(action));
     }
@@ -119,11 +144,12 @@ pub trait Agent {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CrusoeAgent {
-    id: u64,
-    stock: Stock,
-    is_alive: bool,
-    action_history: Vec<Action>,
+    pub id: u64,
+    pub stock: Stock,
+    pub is_alive: bool,
+    pub action_history: Vec<Action>,
     stock_history: Vec<Stock>,
+    pub reward_history: Vec<Reward>,
 }
 
 impl CrusoeAgent {
@@ -134,6 +160,7 @@ impl CrusoeAgent {
             is_alive: true,
             action_history: vec![],
             stock_history: vec![],
+            reward_history: vec![],
         }
     }
 }
@@ -175,22 +202,38 @@ impl Agent for CrusoeAgent {
     // self can be immutable here.
     fn choose_action(&mut self) -> Action {
         // let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
-        // let action = Action::random(&mut StdRng::from_os_rng());
-        let action = Action::random(&mut StdRng::seed_from_u64(self.id));
+        let action = Action::random(&mut StdRng::from_os_rng());
+        // let action = Action::random(&mut StdRng::seed_from_u64(self.id));
         self.action_history.push(action);
         action
     }
 
-    fn action_history(&self) -> Vec<Action> {
-        self.action_history.clone()
+    // TODO: consider moving teh action_history update into act method, so
+    // self can be immutable here.
+    fn choose_action_with_model(&mut self, model: &Model) -> Action {
+        let action =
+            model.sample_action_by_id(0, &self.stock.representation(), &mut StdRng::from_os_rng());
+        self.action_history.push(action.into());
+        action.into()
     }
 
-    fn stock_history(&self) -> Vec<Stock> {
-        self.stock_history.clone()
+    fn action_history(&self) -> &[Action] {
+        &self.action_history
     }
-
-    fn update_stock_history(&mut self) {
-        self.stock_history.push(self.stock().clone());
+    fn stock_history(&self) -> &[Stock] {
+        &self.stock_history
+    }
+    fn reward_history(&self) -> &[Reward] {
+        &self.reward_history
+    }
+    fn action_history_mut(&mut self) -> &mut Vec<Action> {
+        &mut self.action_history
+    }
+    fn stock_history_mut(&mut self) -> &mut Vec<Stock> {
+        &mut self.stock_history
+    }
+    fn reward_history_mut(&mut self) -> &mut Vec<Reward> {
+        &mut self.reward_history
     }
 
     fn is_alive(&self) -> bool {
@@ -218,23 +261,30 @@ impl Agent for CrusoeAgent {
 #[enum_dispatch(Agent)]
 pub enum AgentType {
     Crusoe(CrusoeAgent),
+    Rl(LearningAgent),
 }
 
-/// A simple function that adds two integers.
-pub fn some_agent_fn(x: Int, y: Int) -> Int {
-    x + y
+impl AgentType {
+    pub fn action_history(&self) -> Vec<ActionFlattened> {
+        match self {
+            AgentType::Crusoe(agent) => {
+                agent.action_history().iter().map(|a| (*a).into()).collect()
+            }
+            AgentType::Rl(agent) => agent.action_history().iter().map(|a| (*a).into()).collect(),
+        }
+    }
+
+    pub fn reward_history(&self) -> Vec<Reward> {
+        match self {
+            AgentType::Crusoe(agent) => agent.reward_history().to_vec(),
+            AgentType::Rl(agent) => agent.reward_history().to_vec(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*; // Import the functions from the parent module
-
-    #[test]
-    fn test_some_agent_fn() {
-        assert_eq!(some_agent_fn(2, 3), 5);
-        assert_eq!(some_agent_fn(-1, 1), 0);
-        assert_eq!(some_agent_fn(0, 0), 0);
-    }
 
     #[test]
     fn test_consume() {
