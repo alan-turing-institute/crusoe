@@ -119,20 +119,9 @@ where
         (optimal_a, *q_optimal)
     }
     fn pick_rnd(&self, rng: &mut StdRng) -> A {
-        let r: f32 = rng.random();
-        let mut a_iter = A::iter();
-        let a: A;
-        if r < 0.3 {
-            a = a_iter.next().expect("at least one action in enum");
-        } else if r < 0.6 {
-            a_iter.next();
-            a = a_iter.next().unwrap();
-        } else {
-            a_iter.next();
-            a_iter.next();
-            a = a_iter.next().unwrap();
-        }
-        a
+        let actions: Vec<A> = A::iter().collect();
+        let idx = (rng.random::<f64>() * actions.len() as f64).floor() as usize;
+        actions[idx].clone()
     }
 }
 

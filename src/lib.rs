@@ -12,8 +12,12 @@ pub mod goods;
 pub mod learning;
 pub mod simulation;
 pub mod stock;
+pub mod valuation;
 
 pub type Int = i32;
 pub type UInt = u32;
 
-type Model = SARSAModel<Stock, GoodsUnitLevel, InvLevel, Action>;
+pub type Model = SARSAModel<Stock, GoodsUnitLevel, InvLevel, Action>;
+
+const POSITIVE_REWARD: Int = 1;
+const NEGATIVE_REWARD: Int = -100000;

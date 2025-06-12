@@ -46,7 +46,11 @@ impl From<Action> for ActionFlattened {
             Action::ProduceGood(Good::Fish) => ActionFlattened::ProduceFish,
             Action::ProduceGood(Good::Basket) => ActionFlattened::ProduceBasket,
             Action::ProduceGood(Good::Spear) => ActionFlattened::ProduceSpear,
-            _ => ActionFlattened::Leisure,
+            Action::ProduceGood(Good::Smoker) => ActionFlattened::ProduceSmoker,
+            Action::ProduceGood(Good::Boat) => ActionFlattened::ProduceBoat,
+            Action::ProduceGood(Good::Timber) => ActionFlattened::ProduceTimber,
+            Action::ProduceGood(Good::Axe) => ActionFlattened::ProduceAxe,
+            Action::Leisure => ActionFlattened::Leisure,
         }
     }
 }

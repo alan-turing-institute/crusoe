@@ -1,8 +1,8 @@
 use crusoe::{
     actions::ActionFlattened as Action,
     config::Config,
-    goods::{Good, GoodsUnitLevel},
-    learning::{agent_state::LevelPair, tabular_rl::SARSAModel},
+    goods::GoodsUnitLevel,
+    learning::tabular_rl::SARSAModel,
     simulation::Simulation,
     stock::{InvLevel, Stock},
 };
@@ -11,7 +11,8 @@ use strum::IntoEnumIterator;
 fn main() {
     let mut sim = Simulation::new(
         Config {
-            max_time: 100,
+            max_time: 1000000,
+            daily_nutrition: 3,
             ..Config::default()
         },
         true,
@@ -29,11 +30,26 @@ fn main() {
 
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);
-        println!("Time: {}, Agents: {}", sim.time, sim.agents.len());
+        if sim.time % 1000 == 0 {
+            let n_steps = 10000;
+            let avg_reward = sim.agents[0]
+                .reward_history()
+                .iter()
+                .rev()
+                .take(n_steps)
+                .map(|el| el.val as f32)
+                .sum::<f32>()
+                / n_steps as f32;
+            println!("Time: {}, Avg. Reward: {}", sim.time, avg_reward)
+        }
         sim.time += 1;
 
         // Update model given agent history
         model.step(sim.time as i32, &sim.agent_hist);
     }
-    println!("Actions:  {0:?}", sim.agents[0]);
+    // println!("Actions:  {0:?}", sim.agents[0]);
+
+    // Write sim to disk
+    let s = serde_json::to_string(&sim).unwrap();
+    // println!("{s}");
 }

@@ -1,8 +1,7 @@
 use crate::actions::ActionFlattened as Action;
 use crate::agent::{Agent, AgentType, CrusoeAgent};
 use crate::config::Config;
-use crate::goods::{Good, GoodsUnitLevel};
-use crate::learning::agent_state::LevelPair;
+use crate::goods::GoodsUnitLevel;
 use crate::learning::history::{History, SAR};
 use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
@@ -26,7 +25,10 @@ impl Default for Simulation {
         Simulation {
             time: 0,
             agents: Vec::new(),
-            config: Config::default(),
+            config: Config {
+                max_time: 100,
+                ..Default::default()
+            },
             agent_hist: BTreeMap::new(),
             verbose: true,
         }
@@ -35,8 +37,6 @@ impl Default for Simulation {
 
 impl Simulation {
     pub fn new(config: Config, verbose: bool) -> Self {
-        // TODO: remove config here
-        let config = Config::default();
         // TODO: add n_agents to config
         // let num_agents = 10;
         // let multi_policy = false;
@@ -53,10 +53,7 @@ impl Simulation {
             time: 0,
             // agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
             agents: vec![AgentType::Rl(LearningAgent::new(0))], // Initialize with one RL agent
-            config: Config {
-                max_time: 100,
-                ..Default::default()
-            },
+            config,
             agent_hist,
             verbose,
         }
@@ -126,6 +123,7 @@ mod tests {
         let sim = Simulation::new(
             Config {
                 max_time: 100,
+
                 ..Default::default()
             },
             true,

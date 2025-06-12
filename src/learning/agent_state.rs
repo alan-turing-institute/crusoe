@@ -1,25 +1,12 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
-
 use crate::{
     goods::GoodsUnitLevel,
-    stock::{InvLevel, RemainingLevel, Stock},
+    stock::{InvLevel, Stock},
 };
 
 pub trait DiscrRep<S, L> {
     fn representation(&self) -> Vec<(S, L)>;
-}
-
-// Approximate Q table size
-// (4 * 8 * 4) * (leisure + 8[action per good] + trade + credit) = 128 * 11 = 1408
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LevelPair(pub RemainingLevel, pub InvLevel);
-
-impl From<(RemainingLevel, InvLevel)> for LevelPair {
-    fn from(pair: (RemainingLevel, InvLevel)) -> Self {
-        LevelPair(pair.0, pair.1)
-    }
 }
 
 impl DiscrRep<GoodsUnitLevel, InvLevel> for Stock {
