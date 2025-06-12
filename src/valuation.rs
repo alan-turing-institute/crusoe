@@ -1,11 +1,13 @@
+use rand::{SeedableRng, rngs::StdRng};
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
 use crate::{
-    UInt,
+    Model, UInt,
     actions::Action,
     agent::Agent,
     goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity},
+    learning::{agent_state::DiscrRep, reward::Reward},
     stock::Stock,
 };
 
@@ -16,6 +18,7 @@ pub struct RationalAgent {
     is_alive: bool,
     action_history: Vec<Action>,
     stock_history: Vec<Stock>,
+    reward_history: Vec<Reward>,
     daily_nutrition: UInt,
 }
 
@@ -27,7 +30,8 @@ impl RationalAgent {
             is_alive: true,
             action_history: vec![],
             stock_history: vec![],
-            daily_nutrition: daily_nutrition,
+            reward_history: vec![],
+            daily_nutrition,
         }
     }
 
@@ -447,16 +451,29 @@ impl Agent for RationalAgent {
         todo!()
     }
 
-    fn action_history(&self) -> Vec<Action> {
-        self.action_history.clone()
+    fn choose_action_with_model(&mut self, model: &Model) -> Action {
+        let action =
+            model.sample_action_by_id(0, &self.stock.representation(), &mut StdRng::from_os_rng());
+        self.action_history.push(action.into());
+        action.into()
     }
-
-    fn stock_history(&self) -> Vec<Stock> {
-        self.stock_history.clone()
+    fn action_history(&self) -> &[Action] {
+        &self.action_history
     }
-
-    fn update_stock_history(&mut self) {
-        self.stock_history.push(self.stock().clone());
+    fn stock_history(&self) -> &[Stock] {
+        &self.stock_history
+    }
+    fn reward_history(&self) -> &[Reward] {
+        &self.reward_history
+    }
+    fn action_history_mut(&mut self) -> &mut Vec<Action> {
+        &mut self.action_history
+    }
+    fn stock_history_mut(&mut self) -> &mut Vec<Stock> {
+        &mut self.stock_history
+    }
+    fn reward_history_mut(&mut self) -> &mut Vec<Reward> {
+        &mut self.reward_history
     }
 
     fn is_alive(&self) -> bool {

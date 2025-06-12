@@ -2,6 +2,9 @@ use crate::{UInt, actions::Action, stock::Stock};
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
+use crate::stock::RemainingLevel;
+use strum::IntoEnumIterator;
+
 type Quantity = UInt;
 type Interval = UInt;
 
@@ -23,7 +26,7 @@ impl Productivity {
 }
 
 // A good in the abstract (as opposed to particular units of a good).
-#[derive(Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter)]
 pub enum Good {
     Berries,
     Fish,
@@ -112,10 +115,7 @@ impl Good {
     /// Returns true if this good is produced using the given (higher order) good.
     pub fn is_produced_using(&self, good: &Good) -> bool {
         match self {
-            Good::Berries => match good {
-                Good::Basket => true,
-                _ => false,
-            },
+            Good::Berries => matches!(good, Good::Basket),
             Good::Fish => match good {
                 Good::Spear => true,
                 Good::Boat => true,
@@ -123,18 +123,9 @@ impl Good {
             },
             Good::Basket => false,
             Good::Spear => false,
-            Good::Smoker => match good {
-                Good::Timber => true,
-                _ => false,
-            },
-            Good::Boat => match good {
-                Good::Timber => true,
-                _ => false,
-            },
-            Good::Timber => match good {
-                Good::Axe => true,
-                _ => false,
-            },
+            Good::Smoker => matches!(good, Good::Timber),
+            Good::Boat => matches!(good, Good::Timber),
+            Good::Timber => matches!(good, Good::Axe),
             Good::Axe => false,
         }
     }
@@ -225,6 +216,32 @@ impl Good {
 pub struct GoodsUnit {
     pub good: Good,
     pub remaining_lifetime: UInt, // interpreted as remaining uses for capital goods.
+}
+
+// For units of goods, each has a lifetime remaining value before it is destroyed.
+// For capital goods, (e.g. spear, timber), each has a number of uses remaining before it is destroyed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GoodsUnitLevel {
+    pub good: Good,
+    pub remaining_lifetime: RemainingLevel,
+}
+
+impl GoodsUnitLevel {
+    pub fn new(good: Good, remaining_lifetime: RemainingLevel) -> Self {
+        GoodsUnitLevel {
+            good,
+            remaining_lifetime,
+        }
+    }
+
+    pub fn iter() -> impl Iterator<Item = GoodsUnitLevel> {
+        Good::iter().flat_map(|good| {
+            RemainingLevel::iter().map(move |remaining_lifetime| GoodsUnitLevel {
+                good,
+                remaining_lifetime,
+            })
+        })
+    }
 }
 
 impl GoodsUnit {

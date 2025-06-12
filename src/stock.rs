@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 use crate::{
     UInt,
     actions::Action,
-    goods::{Good, GoodsUnit, PartialGoodsUnit},
+    config::core_config,
+    goods::{Good, GoodsUnit, GoodsUnitLevel, PartialGoodsUnit},
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,6 +31,90 @@ where
         }
     }
     seq.end()
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
+pub enum InvLevel {
+    // quantity
+    // Critical,
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
+pub enum RemainingLevel {
+    // lifetime
+    //Critical,
+    Low,
+    //Medium,
+    // High,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StockDiscrete {
+    pub stock: HashMap<GoodsUnitLevel, InvLevel>,
+}
+
+impl Stock {
+    pub fn discretise(&self) -> StockDiscrete {
+        let mut ds = HashMap::new();
+        let config = core_config();
+        for (goods_unit, quantity) in &self.stock {
+            match (goods_unit, quantity) {
+                // (
+                //     GoodsUnit {
+                //         good,
+                //         remaining_lifetime,
+                //     },
+                //     qty,
+                // )
+                // if *qty < config.agent.inv_level_low => {
+                //     ds.insert(
+                //         GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                //         InvLevel::Critical,
+                //     );
+                // }
+                (
+                    GoodsUnit {
+                        good,
+                        remaining_lifetime,
+                    },
+                    qty,
+                ) if *qty < config.agent.inv_level_med => {
+                    ds.insert(
+                        GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                        InvLevel::Low,
+                    );
+                }
+                (
+                    GoodsUnit {
+                        good,
+                        remaining_lifetime,
+                    },
+                    qty,
+                ) if *qty < config.agent.inv_level_high => {
+                    ds.insert(
+                        GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                        InvLevel::Medium,
+                    );
+                }
+                (
+                    GoodsUnit {
+                        good,
+                        remaining_lifetime,
+                    },
+                    qty,
+                ) => {
+                    ds.insert(
+                        GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                        InvLevel::High,
+                    );
+                }
+            }
+        }
+        StockDiscrete { stock: ds }
+    }
 }
 
 impl Stock {
@@ -70,7 +156,7 @@ impl Stock {
 
     /// Returns true if the stock contains any units of the given good.
     pub fn contains(&self, good: &Good) -> bool {
-        for (goods_unit, _) in self.stock.iter() {
+        for goods_unit in self.stock.keys() {
             if &goods_unit.good == good {
                 return true;
             }
