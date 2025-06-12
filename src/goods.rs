@@ -112,28 +112,13 @@ impl Good {
     /// Returns true if this good is produced using the given (higher order) good.
     pub fn is_produced_using(&self, good: Good) -> bool {
         match self {
-            Good::Berries => match good {
-                Good::Basket => true,
-                _ => false,
-            },
-            Good::Fish => match good {
-                Good::Spear => true,
-                _ => false,
-            },
+            Good::Berries => matches!(good, Good::Basket),
+            Good::Fish => matches!(good, Good::Spear),
             Good::Basket => false,
             Good::Spear => false,
-            Good::Smoker => match good {
-                Good::Timber => true,
-                _ => false,
-            },
-            Good::Boat => match good {
-                Good::Timber => true,
-                _ => false,
-            },
-            Good::Timber => match good {
-                Good::Axe => true,
-                _ => false,
-            },
+            Good::Smoker => matches!(good, Good::Timber),
+            Good::Boat => matches!(good, Good::Timber),
+            Good::Timber => matches!(good, Good::Axe),
             Good::Axe => false,
         }
     }
