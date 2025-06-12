@@ -118,7 +118,6 @@ pub trait Agent {
         }
     }
     /// Step the agent forward by one time step.
-    // fn step_forward(&mut self);
     fn step_forward(&mut self, action: Option<Action>) {
         // Select action if not given.
         let action = match action {
@@ -127,18 +126,23 @@ pub trait Agent {
         };
         // Perform action, which updates the agent's stock
         self.act(action);
+
         // Consume stock, which updates whether the agent is alive
         // TODO: make required nutritional_units per time unit configurable.
         let is_alive = self.consume(1);
-        // TODO: removed set_liveness for now
+
+        // TODO: removed set_liveness for now, can be made configurable later.
         // self.set_liveness(is_alive);
+
         // Degrade the agent's stock.
-        // self.stock_history.push(self.stock.clone());
-        // self.append_to_stock_history(self.stock().clone());
         self.update_stock_history(&self.stock().clone());
         self.update_reward_history(action, is_alive);
-        // self.stock = self.stock.step_forward(action);
-        self.set_stock(self.stock().step_forward(action));
+
+        // Update the stock
+        match is_alive {
+            true => self.set_stock(self.stock().step_forward(action)),
+            false => self.set_stock(Stock::default()),
+        }
     }
 }
 
