@@ -9,6 +9,7 @@ use crate::learning::agent_state::DiscrRep;
 use crate::learning::learning_agent::LearningAgent;
 use crate::learning::reward::Reward;
 use crate::stock::Stock;
+use crate::valuation::RationalAgent;
 use crate::{Model, NEGATIVE_REWARD, POSITIVE_REWARD, UInt};
 
 #[enum_dispatch]
@@ -25,7 +26,7 @@ pub trait Agent {
     fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit>;
     /// Returns the number of units of the good produced per day,
     /// given the agent's existing stock.
-    fn productivity(&self, good: Good) -> Productivity {
+    fn productivity(&self, good: &Good) -> Productivity {
         // TODO: make configurable.
         // Note: can modify default productivity for different agents (for specialisation).
         good.default_productivity(&self.stock())
@@ -97,7 +98,7 @@ pub trait Agent {
     fn act(&mut self, action: Action) {
         match action {
             Action::ProduceGood(good) => {
-                let productivity = self.productivity(good);
+                let productivity = self.productivity(&good);
                 match productivity {
                     Productivity::Immediate(qty) => self.acquire(GoodsUnit::new(&good), qty),
                     Productivity::Delayed(_) => {
@@ -265,6 +266,7 @@ impl Agent for CrusoeAgent {
 #[enum_dispatch(Agent)]
 pub enum AgentType {
     Crusoe(CrusoeAgent),
+    Rational(RationalAgent),
     Rl(LearningAgent),
 }
 
@@ -275,6 +277,9 @@ impl AgentType {
                 agent.action_history().iter().map(|a| (*a).into()).collect()
             }
             AgentType::Rl(agent) => agent.action_history().iter().map(|a| (*a).into()).collect(),
+            AgentType::Rational(agent) => {
+                agent.action_history().iter().map(|a| (*a).into()).collect()
+            }
         }
     }
 
@@ -282,6 +287,7 @@ impl AgentType {
         match self {
             AgentType::Crusoe(agent) => agent.reward_history().to_vec(),
             AgentType::Rl(agent) => agent.reward_history().to_vec(),
+            AgentType::Rational(agent) => agent.reward_history().to_vec(),
         }
     }
 }
@@ -319,6 +325,18 @@ mod tests {
     }
 
     #[test]
+    fn test_consume_different_goods() {
+        let mut agent = CrusoeAgent::new(1);
+        // Add 2 units of berries and 1 unit of fish.
+        agent.acquire(GoodsUnit::new(&Good::Berries), 2);
+        agent.acquire(GoodsUnit::new(&Good::Fish), 1);
+
+        // The agent can successfully consume 3 nutritional units.
+        assert!(agent.consume(3));
+        assert!(agent.stock.stock.is_empty());
+    }
+
+    #[test]
     fn test_step_forward() {
         let mut agent = CrusoeAgent::new(1);
         agent.stock.add(
@@ -340,5 +358,37 @@ mod tests {
             4,
         );
         assert_eq!(agent.stock, expected);
+    }
+
+    #[test]
+    fn test_acquire() {
+        // Test acquisition of berries.
+        let mut agent = CrusoeAgent::new(1);
+        let goods_unit = GoodsUnit::new(&Good::Berries);
+
+        let mut stock = Stock::default();
+        assert_eq!(agent.stock(), &stock);
+
+        agent.acquire(goods_unit, 2);
+
+        stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            2,
+        );
+        assert_eq!(agent.stock(), &stock);
+
+        agent.acquire(goods_unit, 1);
+
+        stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            1,
+        );
+        assert_eq!(agent.stock(), &stock);
     }
 }

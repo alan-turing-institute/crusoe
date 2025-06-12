@@ -137,7 +137,7 @@ mod tests {
             .into_iter()
             .multi_cartesian_product()
             .collect_vec();
-        // Should be: 4 ** 3 with each position taking all possible variants of the enum
-        assert_eq!(combs.len(), 64)
+        // Should be: 3 ** 3 with each position taking all possible variants of the enum
+        assert_eq!(combs.len(), 27)
     }
 }

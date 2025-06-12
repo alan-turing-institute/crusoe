@@ -55,7 +55,7 @@ impl Agent for LearningAgent {
     /// integer in the first slot should be interpreted as a fraction.
     /// e.g. (5, false) indicates  5 units can be produced in one day,
     /// while (5, true) indicates that a single unit takes 5 days to produce.
-    fn productivity(&self, good: Good) -> Productivity {
+    fn productivity(&self, good: &Good) -> Productivity {
         // TODO: make configurable.
         // TODO: can modify default productivity for different agents (for specialisation).
         good.default_productivity(&self.stock)
@@ -123,7 +123,7 @@ impl Agent for LearningAgent {
     fn act(&mut self, action: Action) {
         match action {
             Action::ProduceGood(good) => {
-                let productivity = self.productivity(good);
+                let productivity = self.productivity(&good);
                 match productivity {
                     Productivity::Immediate(qty) => self.stock.add(GoodsUnit::new(&good), qty),
                     Productivity::Delayed(_) => {

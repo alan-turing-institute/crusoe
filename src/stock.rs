@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::{
@@ -154,9 +155,9 @@ impl Stock {
     }
 
     /// Returns true if the stock contains any units of the given good.
-    pub fn contains(&self, good: Good) -> bool {
+    pub fn contains(&self, good: &Good) -> bool {
         for goods_unit in self.stock.keys() {
-            if goods_unit.good == good {
+            if &goods_unit.good == good {
                 return true;
             }
         }
@@ -185,14 +186,39 @@ impl Stock {
                 if goods_unit.good.is_material() {
                     match action {
                         Action::ProduceGood(good) => {
-                            if good.is_produced_using(goods_unit.good) {
+                            if good.is_produced_using(&goods_unit.good) {
                                 new_quantity = new_quantity - 1;
                             }
                         }
                         _ => {}
                     }
                 }
-                new_stock.stock.insert(new_goods_unit, new_quantity);
+                // Handle improving capital goods by increasing the remaining lifetime of the
+                // goods_unit.
+                // TODO: for simplicity, improved goods never expire (as long as the improving
+                // capital good is available).
+                let mut is_improved_good = false;
+                for g in Good::iter() {
+                    if goods_unit.good.is_improved_using(&g) && self.contains(&g) {
+                        let lifetime_increment = g.lifetime_improvement_increment(&goods_unit.good);
+                        let max_lifetime = GoodsUnit::new(&goods_unit.good).remaining_lifetime
+                            + lifetime_increment;
+                        let new_lifetime = u32::min(
+                            goods_unit.remaining_lifetime + lifetime_increment,
+                            max_lifetime,
+                        );
+                        let improved_goods_unit = GoodsUnit {
+                            good: goods_unit.good,
+                            remaining_lifetime: new_lifetime,
+                        };
+                        new_stock.stock.insert(improved_goods_unit, new_quantity);
+                        is_improved_good = true;
+                        break;
+                    }
+                }
+                if !is_improved_good {
+                    new_stock.stock.insert(new_goods_unit, new_quantity);
+                }
             }
         }
         // Degrade all partial goods by 1 time unit.
@@ -208,26 +234,18 @@ impl Stock {
     pub fn next_consumables(&self) -> Vec<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
-            .filter(|(good, qty)| {
-                matches!(
-                    **good,
-                    GoodsUnit {
-                        good: Good::Berries,
-                        remaining_lifetime: _
-                    }
-                )
-            })
-            .sorted_by_key(|(good, _)| {
-                if let GoodsUnit {
-                    good: Good::Berries,
-                    remaining_lifetime,
-                } = good
-                {
-                    *remaining_lifetime
-                } else {
-                    unreachable!()
-                }
-            })
+            .filter(|(good, _)| good.good.is_consumer())
+            .sorted_by_key(|(good, _)| good.remaining_lifetime)
+            .collect()
+    }
+
+    /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
+    pub fn next_capital_goods_units(&self, capital_good: &Good) -> Vec<(&GoodsUnit, &u32)> {
+        self.stock
+            .iter()
+            .filter(|(good, _)| !good.good.is_consumer())
+            .filter(|(good, _)| good.good == *capital_good)
+            .sorted_by_key(|(good, _)| good.remaining_lifetime)
             .collect()
     }
 }
@@ -307,6 +325,30 @@ mod tests {
             }),
             Some(&1)
         );
+    }
+
+    #[test]
+    fn test_next_consumables() {
+        let mut stock = HashMap::<GoodsUnit, UInt>::new();
+        // Start with 2 units of berries and 1 unit of fish.
+        stock.insert(GoodsUnit::new(&Good::Berries), 2);
+        stock.insert(GoodsUnit::new(&Good::Fish), 1);
+
+        let stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
+
+        let mut result = stock.next_consumables();
+        assert_eq!(result.len(), 2);
+
+        let first = result.pop().unwrap();
+        assert_eq!(first.0, &GoodsUnit::new(&Good::Berries));
+        assert_eq!(first.1, &2);
+
+        let second = result.pop().unwrap();
+        assert_eq!(second.0, &GoodsUnit::new(&Good::Fish));
+        assert_eq!(second.1, &1);
     }
 
     #[test]
@@ -392,6 +434,81 @@ mod tests {
                 remaining_lifetime: 3
             }),
             None
+        );
+
+        // Test with fish, with and without a smoker.
+        // Without smoker:
+        let mut stock = HashMap::<GoodsUnit, UInt>::new();
+        stock.insert(
+            GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2,
+            },
+            5,
+        );
+        let mut stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
+
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2
+            }),
+            Some(&5)
+        );
+
+        stock = stock.step_forward(Action::Leisure);
+
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 1
+            }),
+            Some(&5)
+        );
+
+        // With smoker:
+        let mut stock = HashMap::<GoodsUnit, UInt>::new();
+        stock.insert(
+            GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2,
+            },
+            5,
+        );
+        stock.insert(
+            GoodsUnit {
+                good: Good::Smoker,
+                remaining_lifetime: 5,
+            },
+            1,
+        );
+        let mut stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
+
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2
+            }),
+            Some(&5)
+        );
+
+        stock = stock.step_forward(Action::Leisure);
+
+        println!("{:?}", stock);
+
+        // Lifetime of smoked fish is improved by 20 time units.
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 21
+            }),
+            Some(&5)
         );
     }
 }
