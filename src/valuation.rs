@@ -62,42 +62,15 @@ impl RationalAgent {
         if good.is_consumer() {
             panic!("Expected capital good.")
         }
-
         // Note the marginal value is the maximum (not the sum!) over the values generated in
         // producing all lower-order goods.
-
-        // superfluous:
-        // // First-order capital goods.
-        // let first_order_value: f32 = Good::iter()
-        //     .filter(|g| g.is_consumer())
-        //     .filter(|g| g.is_produced_using(good))
-        //     .map(|consumer_good| {
-        //         self.value_generated_by_first_order_capital_good(good, &consumer_good)
-        //     })
-        //     .max_by(|x, y| x.abs().partial_cmp(&y.abs()).unwrap())
-        //     .unwrap();
-        //
-        // let higher_order_value: f32 = Good::iter()
-        //     .filter(|g| !g.is_consumer())
-        //     .filter(|g| g.is_produced_using(good))
-        //     .map(|lower_order_good| {
-        //         self.value_generated_by_higher_order_good(good, &lower_order_good)
-        //     })
-        //     .max_by(|x, y| x.abs().partial_cmp(&y.abs()).unwrap())
-        //     .unwrap();
-        //
-        // Return the maximum value of the capital good at all orders (some capital
-        // goods may be multiple-order).
-        // f32::max(first_order_value, higher_order_value)
-
-        println!("CAP GOOD: {:?}", good);
 
         // Return the maximum value of the capital good at all orders (some capital
         // goods may be multiple-order).
         Good::iter()
-            .inspect(|x| println!("before filter: {:?}", x))
+            // .inspect(|x| println!("before filter: {:?}", x))
             .filter(|g| g.is_downsteam_of(good))
-            .inspect(|x| println!("after filter: {:?}", x)) //TMP
+            // .inspect(|x| println!("after filter: {:?}", x)) //TMP
             .map(|lower_order_good| {
                 self.value_generated_by_higher_order_good(good, &lower_order_good)
             })
@@ -171,63 +144,12 @@ impl RationalAgent {
             // Reduce the result by a factor equal to the lifetime of the new capital goods unit
             // divided by the number of days of use already available from the existing stock.
             factor = (capital_goods_unit.remaining_lifetime as f32) / (usable_days as f32);
-
-            // // Remove any units of the capital good from the dummy agent's stock.
-            // for goods_unit_in_stock in capital_goods_in_stock {
-            //     dummy_agent
-            //         .stock_mut()
-            //         .remove(goods_unit_in_stock.0, *goods_unit_in_stock.1);
-            // }
         }
 
         match consumer_good.is_produced_using(capital_good) {
             true => self.value_of_first_order_productivity(capital_good, consumer_good, factor),
             false => self.value_of_first_order_improvement(capital_good, consumer_good, factor),
         }
-
-        // // Check that the dummy agent's stock does not contain the capital good.
-        // assert!(!dummy_agent.stock().contains(capital_good));
-
-        // TODO: from here we need to differentiate between first order production-enhancing goods
-        // versus first-order improver goods.
-
-        // // Get the productivity of the consumer good with and without the capital good.
-        // let productivity_sans = match dummy_agent.productivity(consumer_good) {
-        //     Productivity::Immediate(quantity) => quantity,
-        //     Productivity::Delayed(_) => unreachable!("Consumer goods have immediate productivity"),
-        //     Productivity::None => unreachable!("Consumer goods have immediate productivity"),
-        // };
-        // dummy_agent.acquire(capital_goods_unit, 1);
-        // let productivity_with = match dummy_agent.productivity(consumer_good) {
-        //     Productivity::Immediate(quantity) => quantity,
-        //     Productivity::Delayed(_) => unreachable!("Consumer goods have immediate productivity"),
-        //     Productivity::None => unreachable!("Consumer goods have immediate productivity"),
-        // };
-        // // Remove the capital good again.
-        // dummy_agent.stock_mut().remove(&capital_goods_unit, 1);
-
-        // // TODO:
-        // // Handle the smoker, which does not increase productivity but increases lifetime of fish.
-        // // INITIAL WORKAROUND:
-        // // Count the additional days of sustenance afforded by the improvement.
-
-        // // Check that the productivity with the capital good exceeds that without.
-        // assert!(productivity_with > productivity_sans);
-
-        // let mut sum: f32 = 0.0;
-        // let mut count = 0;
-        // while count + productivity_sans != productivity_with {
-        //     // TODO: discounting.
-
-        //     // Add the marginal value of one unit of the consumer good, given a stock
-        //     // that contains `count` additional units of the consumer good.
-        //     sum = sum + dummy_agent.marginal_unit_value_of_consumer_good(consumer_good);
-        //     dummy_agent.acquire(GoodsUnit::new(consumer_good), 1);
-
-        //     count = count + 1;
-        // }
-
-        // factor * (capital_goods_unit.remaining_lifetime as f32) * sum
     }
 
     fn value_of_first_order_productivity(
@@ -568,26 +490,25 @@ mod tests {
         let daily_nutrition = 3;
         let mut agent = RationalAgent::new(1, daily_nutrition);
 
-        // TODO: REINCLUDE
-        // // Test when the lower-order good is a consumer good.
-        // let higher_order_good = Good::Basket;
-        // let lower_order_good = Good::Berries;
+        // Test when the lower-order good is a consumer good.
+        let higher_order_good = Good::Basket;
+        let lower_order_good = Good::Berries;
 
-        // let result =
-        //     agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
+        let result =
+            agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
 
-        // // Result should be the same as the value_generated_by_first_order_capital_good (see
-        // // other unit test case).
-        // assert_eq!(result, 2.5);
+        // Result should be the same as the value_generated_by_first_order_capital_good (see
+        // other unit test case).
+        assert_eq!(result, 2.5);
 
-        // // Test when the lower-order good is a capital good and the higher-order good is a material.
-        // let higher_order_good = Good::Timber;
-        // let lower_order_good = Good::Boat;
+        // Test when the lower-order good is a capital good and the higher-order good is a material.
+        let higher_order_good = Good::Timber;
+        let lower_order_good = Good::Boat;
 
-        // let result =
-        //     agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
+        let result =
+            agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
 
-        // assert!(result == 5.0);
+        assert!(result == 5.0);
 
         // Test when the lower-order good is a capital good (and a material).
         let higher_order_good = Good::Axe;
@@ -596,8 +517,8 @@ mod tests {
         let result =
             agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
 
-        // TODO. This value is correct for the temporary workaround.
-        assert!(result == 10.0);
+        // TODO. This value depends on the temporary workaround hard-coded value for the smoker.
+        assert!(result == 25.0);
     }
 
     #[test]
