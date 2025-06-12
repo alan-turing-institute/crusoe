@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use rand::{SeedableRng, rngs::StdRng};
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
@@ -188,29 +186,23 @@ impl Agent for RationalAgent {
         self.action_history.push(action.into());
         action.into()
     }
-    fn action_history(&self) -> Vec<Action> {
-        self.action_history.clone()
+    fn action_history(&self) -> &[Action] {
+        &self.action_history
     }
-
-    fn stock_history(&self) -> Vec<Stock> {
-        self.stock_history.clone()
+    fn stock_history(&self) -> &[Stock] {
+        &self.stock_history
     }
-
-    fn reward_history(&self) -> Vec<Reward> {
-        self.reward_history.clone()
+    fn reward_history(&self) -> &[Reward] {
+        &self.reward_history
     }
-
-    fn update_stock_history(&mut self) {
-        self.stock_history.push(self.stock().clone());
+    fn action_history_mut(&mut self) -> &mut Vec<Action> {
+        &mut self.action_history
     }
-
-    fn update_reward_history(&mut self, action: Action, is_alive: bool) {
-        let reward = match (action, is_alive) {
-            (Action::ProduceGood(_), true) => Reward::new(0),
-            (Action::Leisure, true) => Reward::new(1),
-            (_, false) => Reward::new(-1000000),
-        };
-        self.reward_history.push(reward);
+    fn stock_history_mut(&mut self) -> &mut Vec<Stock> {
+        &mut self.stock_history
+    }
+    fn reward_history_mut(&mut self) -> &mut Vec<Reward> {
+        &mut self.reward_history
     }
 
     fn is_alive(&self) -> bool {
