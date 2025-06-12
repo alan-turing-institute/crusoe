@@ -68,7 +68,10 @@ impl RationalAgent {
             panic!("Expected capital good.")
         }
 
-        let productivity_per_unit_time = self.productivity(good).per_unit_time().expect("");
+        let productivity_per_unit_time = match self.productivity(good).per_unit_time() {
+            Some(x) => x,
+            None => return 0.0,
+        };
 
         // Marginal benefit is *zero* unless there is enough stock to finish production.
         let production_interval: u32 = ((1 as f32) / productivity_per_unit_time) as u32;
@@ -483,10 +486,7 @@ impl Agent for RationalAgent {
     }
 
     fn choose_action_with_model(&mut self, model: &Model) -> Action {
-        let action =
-            model.sample_action_by_id(0, &self.stock.representation(), &mut StdRng::from_os_rng());
-        self.action_history.push(action.into());
-        action.into()
+        self.choose_action() // Rational agent ignores the RL model.
     }
     fn action_history(&self) -> &[Action] {
         &self.action_history
