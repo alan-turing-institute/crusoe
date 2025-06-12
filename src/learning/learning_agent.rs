@@ -2,7 +2,7 @@ use rand::SeedableRng;
 use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
-use crate::actions::Action;
+use crate::actions::{Action, ActionFlattened};
 use crate::agent::Agent;
 use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
 use crate::learning::agent_state::DiscrRep;
@@ -74,8 +74,17 @@ impl Agent for LearningAgent {
     // TODO: consider moving teh action_history update into act method, so
     // self can be immutable here.
     fn choose_action_with_model(&mut self, model: &Model) -> Action {
-        let action =
-            model.sample_action_by_id(0, &self.stock.representation(), &mut StdRng::from_os_rng());
+        let action = loop {
+            let action = model.sample_action_by_id(
+                0,
+                &self.stock.representation(),
+                &mut StdRng::from_os_rng(),
+            );
+            if [ActionFlattened::Leisure, ActionFlattened::ProduceBerries].contains(&action) {
+                // If the action is leisure or produce berries, we can take it.
+                break action;
+            }
+        };
         self.action_history.push(action.into());
         action.into()
     }

@@ -6,6 +6,8 @@ use crate::learning::history::{History, SAR};
 use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
 use crate::{Model, UInt};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::vec::Vec;
@@ -78,6 +80,13 @@ impl Simulation {
                 continue; // Skip dead agents
             }
             let action = agent.choose_action_with_model(model);
+            // let action = if self.time < 5 {
+            //     Action::Leisure.into()
+            // } else if StdRng::from_os_rng().random::<bool>() {
+            //     Action::ProduceBerries.into()
+            // } else {
+            //     Action::Leisure.into()
+            // };
             agent.step_forward(Some(action));
             self.agent_hist
                 // TODO: update to use more than just agent with ID 0
