@@ -8,7 +8,7 @@ use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
 use crate::learning::agent_state::DiscrRep;
 use crate::learning::reward::Reward;
 use crate::stock::Stock;
-use crate::{Model, UInt};
+use crate::{Model, NEGATIVE_REWARD, POSITIVE_REWARD, UInt};
 
 #[enum_dispatch]
 pub trait Agent {
@@ -66,14 +66,29 @@ pub trait Agent {
     }
 
     /// Get the complete history of agent actions.
-    fn action_history(&self) -> Vec<Action>;
+    fn action_history(&self) -> &[Action];
     /// Get the complete history of agent stocks.
-    fn stock_history(&self) -> Vec<Stock>;
+    fn stock_history(&self) -> &[Stock];
     /// Get the reward history.
-    fn reward_history(&self) -> Vec<Reward>;
+    fn reward_history(&self) -> &[Reward];
+    /// Get the complete history of agent actions.
+    fn action_history_mut(&mut self) -> &mut Vec<Action>;
+    /// Get the complete history of agent stocks.
+    fn stock_history_mut(&mut self) -> &mut Vec<Stock>;
+    /// Get the reward history.
+    fn reward_history_mut(&mut self) -> &mut Vec<Reward>;
     /// Return true if the agent is still alive.
-    fn update_stock_history(&mut self);
-    fn update_reward_history(&mut self, action: Action, is_alive: bool);
+    fn update_stock_history(&mut self, stock: &Stock) {
+        self.stock_history_mut().push(stock.clone());
+    }
+    fn update_reward_history(&mut self, action: Action, is_alive: bool) {
+        let reward = match (action, is_alive) {
+            (Action::ProduceGood(_), true) => Reward::new(0),
+            (Action::Leisure, true) => Reward::new(POSITIVE_REWARD),
+            (_, false) => Reward::new(NEGATIVE_REWARD),
+        };
+        self.reward_history_mut().push(reward);
+    }
     fn is_alive(&self) -> bool;
     fn set_liveness(&mut self, value: bool);
     /// Execture the given action.
@@ -119,7 +134,7 @@ pub trait Agent {
         // Degrade the agent's stock.
         // self.stock_history.push(self.stock.clone());
         // self.append_to_stock_history(self.stock().clone());
-        self.update_stock_history();
+        self.update_stock_history(&self.stock().clone());
         self.update_reward_history(action, is_alive);
         // self.stock = self.stock.step_forward(action);
         self.set_stock(self.stock().step_forward(action));
@@ -201,27 +216,23 @@ impl Agent for CrusoeAgent {
         action.into()
     }
 
-    fn action_history(&self) -> Vec<Action> {
-        self.action_history.clone()
+    fn action_history(&self) -> &[Action] {
+        &self.action_history
     }
-    fn stock_history(&self) -> Vec<Stock> {
-        self.stock_history.clone()
+    fn stock_history(&self) -> &[Stock] {
+        &self.stock_history
     }
-    fn reward_history(&self) -> Vec<Reward> {
-        self.reward_history.clone()
+    fn reward_history(&self) -> &[Reward] {
+        &self.reward_history
     }
-
-    fn update_stock_history(&mut self) {
-        self.stock_history.push(self.stock().clone());
+    fn action_history_mut(&mut self) -> &mut Vec<Action> {
+        &mut self.action_history
     }
-
-    fn update_reward_history(&mut self, action: Action, is_alive: bool) {
-        let reward = match (action, is_alive) {
-            (Action::ProduceGood(_), true) => Reward::new(0),
-            (Action::Leisure, true) => Reward::new(1),
-            (_, false) => Reward::new(-1),
-        };
-        self.reward_history.push(reward);
+    fn stock_history_mut(&mut self) -> &mut Vec<Stock> {
+        &mut self.stock_history
+    }
+    fn reward_history_mut(&mut self) -> &mut Vec<Reward> {
+        &mut self.reward_history
     }
 
     fn is_alive(&self) -> bool {
@@ -254,13 +265,15 @@ pub enum AgentType {
 impl AgentType {
     pub fn action_history(&self) -> Vec<ActionFlattened> {
         match self {
-            AgentType::Crusoe(agent) => agent.action_history.iter().map(|a| (*a).into()).collect(),
+            AgentType::Crusoe(agent) => {
+                agent.action_history().iter().map(|a| (*a).into()).collect()
+            }
         }
     }
 
     pub fn reward_history(&self) -> Vec<Reward> {
         match self {
-            AgentType::Crusoe(agent) => agent.reward_history().clone(),
+            AgentType::Crusoe(agent) => agent.reward_history().to_vec(),
         }
     }
 }
