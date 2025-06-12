@@ -30,7 +30,7 @@ fn main() {
 
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);
-        if sim.time % 1000 == 0 {
+        if sim.time % 10 == 0 {
             let n_steps = 10000;
             let avg_reward = sim.agents[0]
                 .reward_history()

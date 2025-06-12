@@ -154,6 +154,16 @@ impl Stock {
         // }
     }
 
+    /// Remove a units of a good from the stock.
+    pub fn remove_partial(&mut self, partial_goods_unit: &PartialGoodsUnit) {
+        let index = self
+            .partial_stock
+            .iter()
+            .position(|x| x.good == partial_goods_unit.good)
+            .unwrap();
+        self.partial_stock.remove(index);
+    }
+
     /// Returns true if the stock contains any units of the given good.
     pub fn contains(&self, good: &Good) -> bool {
         for goods_unit in self.stock.keys() {
@@ -162,6 +172,10 @@ impl Stock {
             }
         }
         false
+    }
+
+    pub fn goods(&self) -> Vec<Good> {
+        Good::iter().filter(|good| self.contains(good)).collect()
     }
 
     /// Returns a partial unit of the given good, if the stock contains one.
@@ -221,7 +235,7 @@ impl Stock {
                 }
             }
         }
-        // Degrade all partial goods by 1 time unit.
+        // Degrade all partial goods by 1 time unit, unless they're finished!
         for partial_goods_unit in &self.partial_stock {
             if let Some(new_partial_goods_unit) = partial_goods_unit.step_forward(action) {
                 new_stock.partial_stock.push(new_partial_goods_unit);
@@ -239,7 +253,8 @@ impl Stock {
             .collect()
     }
 
-    /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
+    /// Returns a vector of units of capital goods (with quantity held), ordered by their
+    /// remaining lifetime.
     pub fn next_capital_goods_units(&self, capital_good: &Good) -> Vec<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
@@ -247,6 +262,16 @@ impl Stock {
             .filter(|(good, _)| good.good == *capital_good)
             .sorted_by_key(|(good, _)| good.remaining_lifetime)
             .collect()
+    }
+
+    pub fn material_units(&self, material_good: &Good) -> UInt {
+        if !material_good.is_material() {
+            return 0;
+        }
+        self.next_capital_goods_units(material_good)
+            .iter()
+            .map(|(_, qty)| *qty)
+            .sum()
     }
 }
 
@@ -502,13 +527,36 @@ mod tests {
 
         println!("{:?}", stock);
 
-        // Lifetime of smoked fish is improved by 20 time units.
+        // Lifetime of smoked fish is improved by 60 time units.
         assert_eq!(
             stock.stock.get(&GoodsUnit {
                 good: Good::Fish,
-                remaining_lifetime: 21
+                remaining_lifetime: 61
             }),
             Some(&5)
         );
+    }
+
+    #[test]
+    fn test_material_units() {
+        let mut stock = Stock::default();
+
+        let material_good = Good::Timber;
+        assert_eq!(stock.material_units(&material_good), 0);
+
+        stock.add(GoodsUnit::new(&material_good), 2);
+        assert_eq!(stock.material_units(&material_good), 2);
+
+        stock.add(GoodsUnit::new(&material_good), 4);
+        assert_eq!(stock.material_units(&material_good), 6);
+
+        stock.add(
+            GoodsUnit {
+                good: material_good,
+                remaining_lifetime: 1,
+            },
+            9,
+        );
+        assert_eq!(stock.material_units(&material_good), 15);
     }
 }
