@@ -86,6 +86,8 @@ impl Good {
                     return Productivity::Immediate(8);
                 }
                 Productivity::Immediate(4)
+                // TODO: for debugging larger values
+                // Productivity::Immediate(8)
             }
             Good::Basket => return Productivity::Immediate(1),
             Good::Fish => {

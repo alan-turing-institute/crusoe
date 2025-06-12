@@ -9,7 +9,7 @@ use crate::learning::agent_state::DiscrRep;
 use crate::learning::learning_agent::LearningAgent;
 use crate::learning::reward::Reward;
 use crate::stock::Stock;
-use crate::{Model, NEGATIVE_REWARD, POSITIVE_REWARD, UInt};
+use crate::{Model, NEGATIVE_REWARD, NEUTRAL_REWARD, POSITIVE_REWARD, UInt};
 
 #[enum_dispatch]
 pub trait Agent {
@@ -84,7 +84,7 @@ pub trait Agent {
     }
     fn update_reward_history(&mut self, action: Action, is_alive: bool) {
         let reward = match (action, is_alive) {
-            (Action::ProduceGood(_), true) => Reward::new(0),
+            (Action::ProduceGood(_), true) => Reward::new(NEUTRAL_REWARD),
             (Action::Leisure, true) => Reward::new(POSITIVE_REWARD),
             (_, false) => Reward::new(NEGATIVE_REWARD),
         };

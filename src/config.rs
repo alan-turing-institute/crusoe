@@ -21,9 +21,13 @@ pub struct AgentConfig {
 impl Default for AgentConfig {
     fn default() -> Self {
         AgentConfig {
-            inv_level_low: 5,
-            inv_level_med: 10,
-            inv_level_high: 20,
+            inv_level_low: 0,
+            // inv_level_med: 3,
+            inv_level_med: 3,
+            inv_level_high: 80000,
+            // inv_level_low: 20000,
+            // inv_level_med: 40000,
+            // inv_level_high: 80000,
             // remaining_level_high: 5,
         }
     }
@@ -57,9 +61,10 @@ impl Default for RLConfig {
     fn default() -> Self {
         RLConfig {
             init_q_value: 0.0,
-            sarsa_n: 1,
+            sarsa_n: 50,
             gamma: 0.9,
             alpha: 0.1,
+            // epsilon: 0.999,
             epsilon: 0.1,
             multi_policy: false,
             // save_model: false,

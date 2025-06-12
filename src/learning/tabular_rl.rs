@@ -94,11 +94,19 @@ where
                 let n = core_config().rl.sarsa_n as usize;
                 let mut g: f32 = 0.0;
 
+                // tau = t - 1 - 1 = t - 2; i = t-2+1 = t - 1
+
+                // Should we be updating t-n and looking ahead to t?
+                // Or should we updating t and looking back to t-n?
+
                 // sum n rewards (discounted back)
                 for i in (tau + 1)..=(tau + n) {
                     // assuming index (s0,a0,r1),(s1,a1,r2)...
                     // book assumes (s0,a0),(s1,a1,r1)...
-                    let r_i = traj[i - 1].reward.val;
+                    // traj at t - 2
+                    // let r_i = traj[i - 1].reward.val;
+                    let r_i = traj[i].reward.val;
+                    // g += core_config().rl.gamma.powf((i - tau - 1) as f32) * r_i as f32;
                     g += core_config().rl.gamma.powf((i - tau - 1) as f32) * r_i as f32;
                 }
 
@@ -108,13 +116,19 @@ where
                     .expect("all possible state-actions will be in the QTable");
                 g += core_config().rl.gamma.powf(n as f32) * q_btstrap;
 
+                // println!("{:?}", traj[tau + n].representation());
+
                 // update q for (s_tau,a_tau)
                 let mut q_tau = *tab
                     .get(&traj[tau].representation())
                     .expect("all possible state-actions will be in the QTable");
                 q_tau += core_config().rl.alpha * (g - q_tau);
                 let old_q = tab.insert(traj[tau].representation(), q_tau);
-                // println!("{:?} -> {:?}", old_q, q_tau)
+                // println!("{:?}", traj[tau].representation());
+                // println!("{:?} -> {:?}", old_q, q_tau);
+
+                // println!("HERE: {:?} ", tab.get(&traj[tau].representation()));
+                // println!("{:?}", traj[tau].representation());
             }
         }
     }

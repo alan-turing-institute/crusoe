@@ -85,6 +85,13 @@ impl Agent for LearningAgent {
                 break action;
             }
         };
+        // let action = ActionFlattened::ProduceBerries;
+
+        // let action = if (self.time + 1) % 4 == 0 {
+        //     Action::Leisure.into() // Every 4th day, agent does leisure
+        // } else {
+        //     Action::ProduceBerries.into() // Otherwise, use the agent's chosen action
+        // };
         self.action_history.push(action.into());
         action.into()
     }
@@ -192,5 +199,16 @@ impl Agent for LearningAgent {
 
     fn set_stock(&mut self, stock: Stock) {
         self.stock = stock;
+    }
+}
+
+impl LearningAgent {
+    pub fn choose_action_specific(&mut self, action: Action) -> Action {
+        // let action = Action::random_weighted(&mut StdRng::from_os_rng(), 0.5);
+        // let action = Action::random(&mut StdRng::from_os_rng());
+        // let action = Action::random(&mut StdRng::seed_from_u64(self.id));
+        // println!("{:?}", self.stock.representation());
+        self.action_history.push(action);
+        action
     }
 }

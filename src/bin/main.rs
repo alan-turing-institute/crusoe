@@ -2,8 +2,8 @@ use crusoe::{
     NEGATIVE_REWARD,
     actions::ActionFlattened as Action,
     config::Config,
-    goods::GoodsUnitLevel,
-    learning::tabular_rl::SARSAModel,
+    goods::{Good, GoodsUnitLevel},
+    learning::{history::SAR, q_table::QKey, reward::Reward, tabular_rl::SARSAModel},
     simulation::Simulation,
     stock::{InvLevel, Stock},
 };
@@ -30,9 +30,22 @@ fn main() {
     );
     println!("Model initialized with {} agents", num_agents);
 
+    let mut lifetimes = vec![];
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);
-
+        if sim.agents[0].reward_history().last().unwrap().val == NEGATIVE_REWARD {
+            let lifetime = sim.agents[0]
+                .reward_history()
+                .iter()
+                .rev()
+                .skip(1)
+                .enumerate()
+                .take_while_inclusive(|(_, el)| el.val != NEGATIVE_REWARD)
+                .map(|(idx, _)| idx)
+                .last()
+                .unwrap_or(0);
+            lifetimes.push(lifetime);
+        }
         if sim.time % 10 == 0 {
             let n_steps = 100;
             let avg_reward = sim.agents[0]
@@ -44,29 +57,154 @@ fn main() {
                 .sum::<f32>()
                 / n_steps as f32;
 
-            let lifetime = sim.agents[0]
-                .reward_history()
-                .iter()
-                .rev()
-                .enumerate()
-                .take_while_inclusive(|(_, el)| el.val != NEGATIVE_REWARD)
-                .map(|(idx, _)| idx)
-                .last()
-                .unwrap();
-
-            println!(
-                "Time: {}, Avg. Reward: {}, Lifetime: {}",
-                sim.time, avg_reward, lifetime
-            )
+            let avg_lifetime =
+                lifetimes.iter().map(|el| *el as f32).sum::<f32>() / lifetimes.len() as f32;
+            // println!(
+            //     "Time: {}, Avg. Reward: {}, Avg. Lifetime: {}",
+            //     sim.time, avg_reward, avg_lifetime
+            // );
+            // println!("{:?}", lifetimes);
         }
-        sim.time += 1;
-
         // Update model given agent history
         model.step(sim.time as i32, &sim.agent_hist);
+
+        println!(
+            "Time: {:5.0} | B(L): {:.1?} | L(L): {:.1?} | B(M): {:.1?} | L(M): {:.1?} | B(H): {:.1?} | L(H): {:.1?} | Alive: {:?} | Action: {:?}",
+            sim.time,
+            model
+                .q_tbls
+                .get(&0)
+                .unwrap()
+                .get_tab()
+                .get(&QKey::from_tuple((
+                    GoodsUnitLevel::iter()
+                        .map(|el| {
+                            match el {
+                                GoodsUnitLevel {
+                                    good: Good::Berries,
+                                    remaining_lifetime: _,
+                                } => (el, InvLevel::Low),
+                                _ => (el, InvLevel::Low),
+                            }
+                        })
+                        .collect_vec(),
+                    Action::ProduceBerries
+                )))
+                .unwrap(),
+            model
+                .q_tbls
+                .get(&0)
+                .unwrap()
+                .get_tab()
+                .get(&QKey::from_tuple((
+                    GoodsUnitLevel::iter()
+                        .map(|el| {
+                            match el {
+                                GoodsUnitLevel {
+                                    good: Good::Berries,
+                                    remaining_lifetime: _,
+                                } => (el, InvLevel::Low),
+                                _ => (el, InvLevel::Low),
+                            }
+                        })
+                        .collect_vec(),
+                    Action::Leisure
+                )))
+                .unwrap(),
+            model
+                .q_tbls
+                .get(&0)
+                .unwrap()
+                .get_tab()
+                .get(&QKey::from_tuple((
+                    GoodsUnitLevel::iter()
+                        .map(|el| {
+                            match el {
+                                GoodsUnitLevel {
+                                    good: Good::Berries,
+                                    remaining_lifetime: _,
+                                } => (el, InvLevel::Medium),
+                                _ => (el, InvLevel::Low),
+                            }
+                        })
+                        .collect_vec(),
+                    Action::ProduceBerries
+                )))
+                .unwrap(),
+            model
+                .q_tbls
+                .get(&0)
+                .unwrap()
+                .get_tab()
+                .get(&QKey::from_tuple((
+                    GoodsUnitLevel::iter()
+                        .map(|el| {
+                            match el {
+                                GoodsUnitLevel {
+                                    good: Good::Berries,
+                                    remaining_lifetime: _,
+                                } => (el, InvLevel::Medium),
+                                _ => (el, InvLevel::Low),
+                            }
+                        })
+                        .collect_vec(),
+                    Action::Leisure
+                )))
+                .unwrap(),
+            model
+                .q_tbls
+                .get(&0)
+                .unwrap()
+                .get_tab()
+                .get(&QKey::from_tuple((
+                    GoodsUnitLevel::iter()
+                        .map(|el| {
+                            match el {
+                                GoodsUnitLevel {
+                                    good: Good::Berries,
+                                    remaining_lifetime: _,
+                                } => (el, InvLevel::High),
+                                _ => (el, InvLevel::Low),
+                            }
+                        })
+                        .collect_vec(),
+                    Action::ProduceBerries
+                )))
+                .unwrap(),
+            model
+                .q_tbls
+                .get(&0)
+                .unwrap()
+                .get_tab()
+                .get(&QKey::from_tuple((
+                    GoodsUnitLevel::iter()
+                        .map(|el| {
+                            match el {
+                                GoodsUnitLevel {
+                                    good: Good::Berries,
+                                    remaining_lifetime: _,
+                                } => (el, InvLevel::High),
+                                _ => (el, InvLevel::Low),
+                            }
+                        })
+                        .collect_vec(),
+                    Action::Leisure
+                )))
+                .unwrap(),
+            sim.agents[0]
+                .reward_history()
+                .last()
+                .unwrap_or(&Reward::new(0))
+                .val
+                != NEGATIVE_REWARD,
+            sim.agents[0].action_history().last().unwrap(),
+        );
+        // println!("Reward history: {:?}", sim.agents[0].reward_history());
+        sim.time += 1;
     }
     // println!("Actions:  {0:?}", sim.agents[0]);
 
     // Write sim to disk
     let s = serde_json::to_string(&sim).unwrap();
-    println!("{s}");
+    // println!("{s}");
 }

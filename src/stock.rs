@@ -394,4 +394,41 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    fn test_discretise() {
+        let mut stock = Stock::default();
+        stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            5,
+        );
+
+        let discretised_stock = stock.discretise();
+        assert_eq!(
+            discretised_stock
+                .stock
+                .get(&GoodsUnitLevel::new(Good::Berries, RemainingLevel::Low)),
+            Some(&InvLevel::Medium)
+        );
+
+        let mut stock = Stock::default();
+        stock.add(
+            GoodsUnit {
+                good: Good::Berries,
+                remaining_lifetime: 10,
+            },
+            1,
+        );
+
+        let discretised_stock = stock.discretise();
+        assert_eq!(
+            discretised_stock
+                .stock
+                .get(&GoodsUnitLevel::new(Good::Berries, RemainingLevel::Low)),
+            Some(&InvLevel::Low)
+        );
+    }
 }
