@@ -239,6 +239,12 @@ impl GoodsUnit {
 
     /// Degrade this good by one time step.
     pub fn step_forward(&self, action: Action) -> Option<Self> {
+        // TODO: handle materials differently. They are capital goods but can only be used once.
+        // The remaining_lifetime of a material is its time before expiry (like a consumer good).
+        if self.good.is_material() {
+            todo!()
+        }
+
         match self.good.is_consumer() {
             // If this good exists in the stock and is a consumer good, degrade it.
             true => {
