@@ -33,20 +33,21 @@ where
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
-pub enum InvLevel { // quantity
-    Critical,
+pub enum InvLevel {
+    // quantity
+    // Critical,
     Low,
     Medium,
     High,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, EnumIter, Hash, Eq, Serialize, Deserialize)]
-pub enum RemainingLevel { // lifetime
+pub enum RemainingLevel {
+    // lifetime
     //Critical,
     Low,
     //Medium,
     // High,
-
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -60,18 +61,19 @@ impl Stock {
         let config = core_config();
         for (goods_unit, quantity) in &self.stock {
             match (goods_unit, quantity) {
-                (
-                    GoodsUnit {
-                        good,
-                        remaining_lifetime,
-                    },
-                    qty,
-                ) if *qty < config.agent.inv_level_low => {
-                    ds.insert(
-                        GoodsUnitLevel::new(*good, RemainingLevel::Low),
-                        InvLevel::Critical,
-                    );
-                },
+                // (
+                //     GoodsUnit {
+                //         good,
+                //         remaining_lifetime,
+                //     },
+                //     qty,
+                // )
+                // if *qty < config.agent.inv_level_low => {
+                //     ds.insert(
+                //         GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                //         InvLevel::Critical,
+                //     );
+                // }
                 (
                     GoodsUnit {
                         good,
@@ -83,7 +85,7 @@ impl Stock {
                         GoodsUnitLevel::new(*good, RemainingLevel::Low),
                         InvLevel::Low,
                     );
-                },
+                }
                 (
                     GoodsUnit {
                         good,
@@ -95,7 +97,7 @@ impl Stock {
                         GoodsUnitLevel::new(*good, RemainingLevel::Low),
                         InvLevel::Medium,
                     );
-                },
+                }
                 (
                     GoodsUnit {
                         good,
@@ -107,7 +109,7 @@ impl Stock {
                         GoodsUnitLevel::new(*good, RemainingLevel::Low),
                         InvLevel::High,
                     );
-                },
+                }
             }
         }
         StockDiscrete { stock: ds }
