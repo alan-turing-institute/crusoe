@@ -79,7 +79,10 @@ impl Simulation {
             if !agent.is_alive() {
                 continue; // Skip dead agents
             }
-            let action = agent.choose_action_with_model(model);
+            let action = match agent {
+                AgentType::Crusoe(agent) => agent.choose_action(),
+                AgentType::Rl(agent) => agent.choose_action_with_model(model),
+            };
             // let action = if self.time < 5 {
             //     Action::Leisure.into()
             // } else if StdRng::from_os_rng().random::<bool>() {
