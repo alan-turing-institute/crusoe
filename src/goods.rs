@@ -86,9 +86,12 @@ impl Good {
             }
             Good::Basket => return Productivity::Immediate(1),
             Good::Fish => {
-                // Productivity of fish is increased by access to a spear.
+                // Productivity of fish is increased by access to a spear or a boat.
                 if stock.contains(&Good::Spear) {
                     return Productivity::Immediate(10);
+                }
+                if stock.contains(&Good::Boat) {
+                    return Productivity::Immediate(20);
                 }
                 Productivity::Immediate(2)
             }
@@ -115,6 +118,7 @@ impl Good {
             },
             Good::Fish => match good {
                 Good::Spear => true,
+                Good::Boat => true,
                 _ => false,
             },
             Good::Basket => false,
@@ -132,6 +136,31 @@ impl Good {
                 _ => false,
             },
             Good::Axe => false,
+        }
+    }
+
+    pub fn is_improved_using(&self, good: &Good) -> bool {
+        match self {
+            Good::Fish => match good {
+                Good::Smoker => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn is_downsteam_of(&self, good: &Good) -> bool {
+        self.is_produced_using(good) || self.is_improved_using(good)
+    }
+
+    pub fn lifetime_improvement_increment(&self, improved_good: &Good) -> u32 {
+        match self {
+            // Smoker increases lifetime by 20 time units.
+            Good::Smoker => match improved_good {
+                Good::Fish => 20,
+                _ => 0,
+            },
+            _ => 0,
         }
     }
 

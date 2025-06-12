@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 
 use crate::{
     UInt,
@@ -106,7 +107,32 @@ impl Stock {
                         _ => {}
                     }
                 }
-                new_stock.stock.insert(new_goods_unit, new_quantity);
+                // Handle improving capital goods by increasing the remaining lifetime of the
+                // goods_unit.
+                // TODO: for simplicity, improved goods never expire (as long as the improving
+                // capital good is available).
+                let mut is_improved_good = false;
+                for g in Good::iter() {
+                    if goods_unit.good.is_improved_using(&g) && self.contains(&g) {
+                        let lifetime_increment = g.lifetime_improvement_increment(&goods_unit.good);
+                        let max_lifetime = GoodsUnit::new(&goods_unit.good).remaining_lifetime
+                            + lifetime_increment;
+                        let new_lifetime = u32::min(
+                            goods_unit.remaining_lifetime + lifetime_increment,
+                            max_lifetime,
+                        );
+                        let improved_goods_unit = GoodsUnit {
+                            good: goods_unit.good,
+                            remaining_lifetime: new_lifetime,
+                        };
+                        new_stock.stock.insert(improved_goods_unit, new_quantity);
+                        is_improved_good = true;
+                        break;
+                    }
+                }
+                if !is_improved_good {
+                    new_stock.stock.insert(new_goods_unit, new_quantity);
+                }
             }
         }
         // Degrade all partial goods by 1 time unit.
@@ -322,6 +348,81 @@ mod tests {
                 remaining_lifetime: 3
             }),
             None
+        );
+
+        // Test with fish, with and without a smoker.
+        // Without smoker:
+        let mut stock = HashMap::<GoodsUnit, UInt>::new();
+        stock.insert(
+            GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2,
+            },
+            5,
+        );
+        let mut stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
+
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2
+            }),
+            Some(&5)
+        );
+
+        stock = stock.step_forward(Action::Leisure);
+
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 1
+            }),
+            Some(&5)
+        );
+
+        // With smoker:
+        let mut stock = HashMap::<GoodsUnit, UInt>::new();
+        stock.insert(
+            GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2,
+            },
+            5,
+        );
+        stock.insert(
+            GoodsUnit {
+                good: Good::Smoker,
+                remaining_lifetime: 5,
+            },
+            1,
+        );
+        let mut stock = Stock {
+            stock: stock,
+            partial_stock: vec![],
+        };
+
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 2
+            }),
+            Some(&5)
+        );
+
+        stock = stock.step_forward(Action::Leisure);
+
+        println!("{:?}", stock);
+
+        // Lifetime of smoked fish is improved by 20 time units.
+        assert_eq!(
+            stock.stock.get(&GoodsUnit {
+                good: Good::Fish,
+                remaining_lifetime: 21
+            }),
+            Some(&5)
         );
     }
 }
