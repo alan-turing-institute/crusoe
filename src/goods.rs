@@ -239,11 +239,8 @@ impl GoodsUnit {
 
     /// Degrade this good by one time step.
     pub fn step_forward(&self, action: Action) -> Option<Self> {
-        // TODO: handle materials differently. They are capital goods but can only be used once.
+        // Note: handles materials differently. They are capital goods but can only be used once.
         // The remaining_lifetime of a material is its time before expiry (like a consumer good).
-        if self.good.is_material() {
-            todo!()
-        }
 
         match self.good.is_consumer() {
             // If this good exists in the stock and is a consumer good, degrade it.
@@ -262,18 +259,49 @@ impl GoodsUnit {
             false => match action {
                 Action::ProduceGood(produced_good) => {
                     if produced_good.is_produced_using(&self.good) {
-                        if self.remaining_lifetime > 1 {
+                        match &self.good.is_material() {
+                            true => {
+                                // If the good is a material, and is used in production, it cannot
+                                // be used again, so return None.
+                                return None;
+                            }
+                            false => {
+                                if self.remaining_lifetime > 1 {
+                                    return Some(GoodsUnit {
+                                        good: self.good,
+                                        remaining_lifetime: self.remaining_lifetime - 1,
+                                    });
+                                }
+                                // If the remaining_lifetime is 0 (after the step), return None.
+                                return None;
+                            }
+                        }
+                    }
+                    // If the good is a material but is *not* used in production, reduce its
+                    // remaining lifetime (as if it were a consumer good).
+                    if self.good.is_material() {
+                        return Some(GoodsUnit {
+                            good: self.good,
+                            remaining_lifetime: self.remaining_lifetime - 1,
+                        });
+                    }
+                    // If the capital good is not used in production (as is not a material),
+                    // it is unchanged.
+                    Some(self.clone())
+                }
+                Action::Leisure => {
+                    match self.good.is_material() {
+                        true => {
+                            // If the good is a material but is *not* used in production, reduce its
+                            // remaining lifetime (as if it were a consumer good).
                             return Some(GoodsUnit {
                                 good: self.good,
                                 remaining_lifetime: self.remaining_lifetime - 1,
                             });
                         }
-                        // If the remaining_lifetime is 0 (after the step), return None.
-                        return None;
+                        false => Some(self.clone()),
                     }
-                    Some(self.clone())
                 }
-                Action::Leisure => Some(self.clone()),
             },
         }
     }
@@ -339,6 +367,7 @@ mod tests {
 
     #[test]
     fn test_step_forward() {
+        // Test with a consumer good.
         let good = GoodsUnit {
             good: Good::Berries,
             remaining_lifetime: 3,
@@ -355,5 +384,43 @@ mod tests {
 
         let good = good.step_forward(action);
         assert!(good.is_none());
+
+        // Test with a material.
+        let good = GoodsUnit {
+            good: Good::Timber,
+            remaining_lifetime: 99,
+        };
+        assert_eq!(good.remaining_lifetime, 99);
+
+        let action = Action::Leisure;
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 98);
+
+        let action = Action::ProduceGood(Good::Berries);
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 97);
+
+        let action = Action::ProduceGood(Good::Boat);
+        let good = good.step_forward(action);
+        assert!(good.is_none());
+
+        // Test with a non-material capital good.
+        let good = GoodsUnit {
+            good: Good::Spear,
+            remaining_lifetime: 5,
+        };
+        assert_eq!(good.remaining_lifetime, 5);
+
+        let action = Action::Leisure;
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 5);
+
+        let action = Action::ProduceGood(Good::Berries);
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 5);
+
+        let action = Action::ProduceGood(Good::Fish);
+        let good = good.step_forward(action).unwrap();
+        assert_eq!(good.remaining_lifetime, 4);
     }
 }
