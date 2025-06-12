@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::actions::{Action, ActionFlattened};
 use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
 use crate::learning::agent_state::DiscrRep;
+use crate::learning::learning_agent::LearningAgent;
 use crate::learning::reward::Reward;
 use crate::stock::Stock;
 use crate::{Model, NEGATIVE_REWARD, POSITIVE_REWARD, UInt};
@@ -260,6 +261,7 @@ impl Agent for CrusoeAgent {
 #[enum_dispatch(Agent)]
 pub enum AgentType {
     Crusoe(CrusoeAgent),
+    Rl(LearningAgent),
 }
 
 impl AgentType {
@@ -268,12 +270,14 @@ impl AgentType {
             AgentType::Crusoe(agent) => {
                 agent.action_history().iter().map(|a| (*a).into()).collect()
             }
+            AgentType::Rl(agent) => agent.action_history().iter().map(|a| (*a).into()).collect(),
         }
     }
 
     pub fn reward_history(&self) -> Vec<Reward> {
         match self {
             AgentType::Crusoe(agent) => agent.reward_history().to_vec(),
+            AgentType::Rl(agent) => agent.reward_history().to_vec(),
         }
     }
 }

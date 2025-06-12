@@ -6,3 +6,4 @@ pub mod q_table;
 pub mod reward;
 pub mod serde_utils;
 pub mod tabular_rl;
+pub mod learning_agent;
