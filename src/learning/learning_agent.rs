@@ -1,16 +1,14 @@
-use enum_dispatch::enum_dispatch;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 
-use crate::actions::{Action, ActionFlattened};
+use crate::actions::Action;
 use crate::agent::Agent;
 use crate::goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity};
 use crate::learning::agent_state::DiscrRep;
 use crate::learning::reward::Reward;
 use crate::stock::Stock;
-use crate::{Model, UInt};
-
+use crate::{Model, NEGATIVE_REWARD, POSITIVE_REWARD, UInt};
 
 // LearningAgent is currently just a clone of CrusoeAgent. The idea would
 // be to have each agent type in its own module (or sub-directory)
@@ -118,13 +116,6 @@ impl Agent for LearningAgent {
         true
     }
 
-    fn action_history(&self) -> Vec<Action> {
-        self.action_history.clone()
-    }
-
-    fn stock_history(&self) -> Vec<Stock> {
-        self.stock_history.clone()
-    }
     fn is_alive(&self) -> bool {
         self.is_alive
     }
@@ -174,17 +165,53 @@ impl Agent for LearningAgent {
                 self.reward_history.push(Reward::new(0));
             }
             (Action::Leisure, true) => {
-                panic!("LEISURE");
-                self.reward_history.push(Reward::new(1));
+                self.reward_history.push(Reward::new(POSITIVE_REWARD));
             }
             (_, false) => {
-                // panic!("NOT ENOUGH NUTRITION");
-                self.reward_history.push(Reward::new(-100000));
+                self.reward_history.push(Reward::new(NEGATIVE_REWARD));
             }
         };
     }
 
-    fn reward_history(&self) -> Vec<Reward> {
-        self.reward_history.clone()
+    fn action_history(&self) -> &[Action] {
+        &self.action_history
+    }
+    fn stock_history(&self) -> &[Stock] {
+        &self.stock_history
+    }
+    fn reward_history(&self) -> &[Reward] {
+        &self.reward_history
+    }
+    fn action_history_mut(&mut self) -> &mut Vec<Action> {
+        &mut self.action_history
+    }
+    fn stock_history_mut(&mut self) -> &mut Vec<Stock> {
+        &mut self.stock_history
+    }
+    fn reward_history_mut(&mut self) -> &mut Vec<Reward> {
+        &mut self.reward_history
+    }
+    fn set_liveness(&mut self, value: bool) {
+        self.is_alive = value;
+    }
+
+    fn acquire(&mut self, goods_unit: GoodsUnit, quantity: UInt) {
+        self.stock.add(goods_unit, quantity);
+    }
+
+    fn acquire_partial(&mut self, partial_goods_unit: PartialGoodsUnit) {
+        self.stock.add_partial(partial_goods_unit);
+    }
+
+    fn get_partial(&self, good: Good) -> Option<PartialGoodsUnit> {
+        self.stock.get_partial(good)
+    }
+
+    fn stock_mut(&mut self) -> &mut Stock {
+        &mut self.stock
+    }
+
+    fn set_stock(&mut self, stock: Stock) {
+        self.stock = stock;
     }
 }
