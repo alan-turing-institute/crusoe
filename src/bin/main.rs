@@ -1,4 +1,5 @@
 use crusoe::{
+    NEGATIVE_REWARD,
     actions::ActionFlattened as Action,
     config::Config,
     goods::GoodsUnitLevel,
@@ -6,12 +7,13 @@ use crusoe::{
     simulation::Simulation,
     stock::{InvLevel, Stock},
 };
+use itertools::Itertools;
 use strum::IntoEnumIterator;
 
 fn main() {
     let mut sim = Simulation::new(
         Config {
-            max_time: 100,
+            max_time: 100000,
             daily_nutrition: 3,
             ..Config::default()
         },
@@ -30,9 +32,9 @@ fn main() {
 
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);
-        // if sim.time % 1000 == 0 {
-        if sim.time % 1 == 0 {
-            let n_steps = 10;
+
+        if sim.time % 10 == 0 {
+            let n_steps = 100;
             let avg_reward = sim.agents[0]
                 .reward_history()
                 .iter()
@@ -41,7 +43,21 @@ fn main() {
                 .map(|el| el.val as f32)
                 .sum::<f32>()
                 / n_steps as f32;
-            println!("Time: {}, Avg. Reward: {}", sim.time, avg_reward)
+
+            let lifetime = sim.agents[0]
+                .reward_history()
+                .iter()
+                .rev()
+                .enumerate()
+                .take_while_inclusive(|(_, el)| el.val != NEGATIVE_REWARD)
+                .map(|(idx, _)| idx)
+                .last()
+                .unwrap();
+
+            println!(
+                "Time: {}, Avg. Reward: {}, Lifetime: {}",
+                sim.time, avg_reward, lifetime
+            )
         }
         sim.time += 1;
 
