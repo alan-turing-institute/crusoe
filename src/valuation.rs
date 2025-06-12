@@ -466,7 +466,20 @@ impl Agent for RationalAgent {
     }
 
     fn choose_action(&mut self) -> Action {
-        todo!()
+        let mut max_benefit = 0.0;
+        let mut best_good = Good::Berries; // arbitrary initial good.
+        for good in Good::iter() {
+            let benefit = self.marginal_benefit_of_action(&Action::ProduceGood(good));
+            if benefit > max_benefit {
+                best_good = good;
+                max_benefit = benefit;
+            }
+        }
+        // TODO: fix magic number 2 here.
+        if self.count_timesteps_till_death(None) > 2 {
+            return Action::Leisure;
+        }
+        Action::ProduceGood(best_good)
     }
 
     fn choose_action_with_model(&mut self, model: &Model) -> Action {
