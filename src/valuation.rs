@@ -556,7 +556,7 @@ impl Agent for RationalAgent {
         for good in Good::iter() {
             // hack:
             if good == Good::Axe && self.stock().contains(&Good::Axe) {
-                println!("HAVE AXE SO IGNORE!");
+                // println!("HAVE AXE SO IGNORE!");
                 continue;
             }
 

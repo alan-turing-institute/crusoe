@@ -387,7 +387,7 @@ impl PartialGoodsUnit {
         match good.multiple_timesteps_to_complete() {
             Some(time) => Some(PartialGoodsUnit {
                 good: good.clone(),
-                time_to_completion: time,
+                time_to_completion: time - 1, // One action has alredy been taken!
             }),
             None => {
                 panic!("Expected multiple timesteps to complete a partial good.")
@@ -397,6 +397,7 @@ impl PartialGoodsUnit {
 
     pub fn increment_production(&mut self) -> Option<GoodsUnit> {
         self.time_to_completion = self.time_to_completion - 1;
+        println!("new self.time_to_completion {:?}", self.time_to_completion);
         if self.time_to_completion == 0 {
             return Some(GoodsUnit::new(&self.good));
         }

@@ -306,8 +306,19 @@ mod tests {
         let mut agent = CrusoeAgent::new(1);
         agent.acquire(GoodsUnit::new(&Good::Berries), 20);
 
-        // TODO NEXT.
-        agent.acquire_partial(PartialGoodsUnit::new(&Good::Axe).unwrap());
+        agent.act(Action::ProduceGood(Good::Axe));
+        assert!(!agent.stock().contains(&Good::Axe));
+
+        assert!(
+            agent
+                .stock()
+                .partial_stock
+                .contains(&PartialGoodsUnit::new(&Good::Axe).unwrap())
+        );
+
+        // Agent acquires Axe after 2 consecutive days of production:
+        agent.act(Action::ProduceGood(Good::Axe));
+        assert!(agent.stock().contains(&Good::Axe));
     }
 
     #[test]
