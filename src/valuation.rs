@@ -55,10 +55,28 @@ impl RationalAgent {
         match good {
             Some(good) => match good.is_consumer() {
                 true => self.marginal_benefit_of_producing_consumer_goods(good),
-                false => todo!(),
+                false => self.marginal_benefit_of_producing_capital_goods(good),
             },
             None => 0.0,
         }
+    }
+
+    /// Returns the marginal benefit to the agent of producing a capital good,
+    /// given the existing stock.
+    fn marginal_benefit_of_producing_capital_goods(&self, good: &Good) -> f32 {
+        if good.is_consumer() {
+            panic!("Expected capital good.")
+        }
+
+        let productivity_per_unit_time = self.productivity(good).per_unit_time().expect("");
+
+        // Marginal benefit is *zero* unless there is enough stock to finish production.
+        let production_interval: u32 = ((1 as f32) / productivity_per_unit_time) as u32;
+        if self.count_timesteps_till_death(None) < production_interval {
+            return 0.0;
+        }
+
+        productivity_per_unit_time * self.marginal_unit_value_of_capital_good(good)
     }
 
     /// Returns the marginal value of a unit of a capital good, given the existing stock.
