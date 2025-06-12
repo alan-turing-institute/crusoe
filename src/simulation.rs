@@ -5,6 +5,7 @@ use crate::goods::GoodsUnitLevel;
 use crate::learning::history::{History, SAR};
 use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
+use crate::valuation::RationalAgent;
 use crate::{Model, UInt};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -52,7 +53,8 @@ impl Simulation {
         Simulation {
             time: 0,
             // agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
-            agents: vec![AgentType::Rl(LearningAgent::new(0))], // Initialize with one RL agent
+            // agents: vec![AgentType::Rl(LearningAgent::new(0))], // Initialize with one RL agent
+            agents: vec![AgentType::Rational(RationalAgent::new(0, 3))], // Initialize with one RL agent
             config,
             agent_hist,
             verbose,
@@ -78,6 +80,34 @@ impl Simulation {
                 continue; // Skip dead agents
             }
             let action = agent.choose_action_with_model(model);
+
+            match action {
+                crate::actions::Action::ProduceGood(good) => match good {
+                    crate::goods::Good::Basket => {
+                        println!("{:?}", action)
+                    }
+                    crate::goods::Good::Spear => {
+                        println!("{:?}", action)
+                    }
+                    crate::goods::Good::Smoker => {
+                        println!("{:?}", action)
+                    }
+                    crate::goods::Good::Boat => {
+                        println!("{:?}", action)
+                    }
+                    crate::goods::Good::Timber => {
+                        println!("{:?}", action)
+                    }
+                    crate::goods::Good::Axe => {
+                        println!("{:?}", action)
+                    }
+                    _ => {}
+                },
+                crate::actions::Action::Leisure => {
+                    println!("{:?}", action)
+                }
+            }
+
             agent.step_forward(Some(action));
             self.agent_hist
                 // TODO: update to use more than just agent with ID 0

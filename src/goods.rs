@@ -132,6 +132,19 @@ impl Good {
         }
     }
 
+    pub fn produces(&self) -> Vec<Good> {
+        match self {
+            Good::Berries => Vec::new(),
+            Good::Fish => Vec::new(),
+            Good::Basket => vec![Good::Berries],
+            Good::Spear => vec![Good::Fish],
+            Good::Smoker => Vec::new(),
+            Good::Boat => vec![Good::Fish],
+            Good::Timber => vec![Good::Smoker, Good::Boat],
+            Good::Axe => vec![Good::Timber],
+        }
+    }
+
     pub fn is_improved_using(&self, good: &Good) -> bool {
         match self {
             Good::Fish => match good {
@@ -142,15 +155,22 @@ impl Good {
         }
     }
 
+    pub fn improves(&self) -> Vec<Good> {
+        match self {
+            Good::Smoker => vec![Good::Fish],
+            _ => Vec::new(),
+        }
+    }
+
     pub fn is_downsteam_of(&self, good: &Good) -> bool {
         self.is_produced_using(good) || self.is_improved_using(good)
     }
 
     pub fn lifetime_improvement_increment(&self, improved_good: &Good) -> u32 {
         match self {
-            // Smoker increases lifetime by 20 time units.
+            // Smoker increases lifetime by 60 time units.
             Good::Smoker => match improved_good {
-                Good::Fish => 20,
+                Good::Fish => 60,
                 _ => 0,
             },
             _ => 0,
@@ -369,12 +389,18 @@ impl PartialGoodsUnit {
                 good: good.clone(),
                 time_to_completion: time,
             }),
-            None => None,
+            None => {
+                panic!("Expected multiple timesteps to complete a partial good.")
+            }
         }
     }
 
-    pub fn increment_production(&mut self) {
-        self.time_to_completion = self.time_to_completion - 1
+    pub fn increment_production(&mut self) -> Option<GoodsUnit> {
+        self.time_to_completion = self.time_to_completion - 1;
+        if self.time_to_completion == 0 {
+            return Some(GoodsUnit::new(&self.good));
+        }
+        None
     }
 
     // Step forward this partially complete goods unit and penalise any

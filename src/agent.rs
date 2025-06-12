@@ -103,8 +103,13 @@ pub trait Agent {
                     Productivity::Immediate(qty) => self.acquire(GoodsUnit::new(&good), qty),
                     Productivity::Delayed(_) => {
                         if let Some(mut partial_good) = self.get_partial(good) {
-                            // If a partial good already exists, do the next step of production.
-                            partial_good.increment_production();
+                            // If a partial good already exists, do the next step of production
+                            // *and* acquire it if it's finished.
+                            if let Some(goods_unit) = partial_good.increment_production() {
+                                self.acquire(goods_unit, 1);
+                                // Remove the (now completed) partial good.
+                                self.stock_mut().remove_partial(&partial_good);
+                            };
                         } else {
                             // Otherwise create a new partial good.
                             self.acquire_partial(PartialGoodsUnit::new(&good).expect(
@@ -295,6 +300,15 @@ impl AgentType {
 #[cfg(test)]
 mod tests {
     use super::*; // Import the functions from the parent module
+
+    #[test]
+    fn test_act() {
+        let mut agent = CrusoeAgent::new(1);
+        agent.acquire(GoodsUnit::new(&Good::Berries), 20);
+
+        // TODO NEXT.
+        agent.acquire_partial(PartialGoodsUnit::new(&Good::Axe).unwrap());
+    }
 
     #[test]
     fn test_consume() {
