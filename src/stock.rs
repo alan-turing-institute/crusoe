@@ -253,7 +253,8 @@ impl Stock {
             .collect()
     }
 
-    /// Returns a vector of units of consumer goods, ordered by their remaining lifetime.
+    /// Returns a vector of units of capital goods (with quantity held), ordered by their
+    /// remaining lifetime.
     pub fn next_capital_goods_units(&self, capital_good: &Good) -> Vec<(&GoodsUnit, &u32)> {
         self.stock
             .iter()
@@ -261,6 +262,16 @@ impl Stock {
             .filter(|(good, _)| good.good == *capital_good)
             .sorted_by_key(|(good, _)| good.remaining_lifetime)
             .collect()
+    }
+
+    pub fn material_units(&self, material_good: &Good) -> UInt {
+        if !material_good.is_material() {
+            return 0;
+        }
+        self.next_capital_goods_units(material_good)
+            .iter()
+            .map(|(_, qty)| *qty)
+            .sum()
     }
 }
 
@@ -524,5 +535,28 @@ mod tests {
             }),
             Some(&5)
         );
+    }
+
+    #[test]
+    fn test_material_units() {
+        let mut stock = Stock::default();
+
+        let material_good = Good::Timber;
+        assert_eq!(stock.material_units(&material_good), 0);
+
+        stock.add(GoodsUnit::new(&material_good), 2);
+        assert_eq!(stock.material_units(&material_good), 2);
+
+        stock.add(GoodsUnit::new(&material_good), 4);
+        assert_eq!(stock.material_units(&material_good), 6);
+
+        stock.add(
+            GoodsUnit {
+                good: material_good,
+                remaining_lifetime: 1,
+            },
+            9,
+        );
+        assert_eq!(stock.material_units(&material_good), 15);
     }
 }
