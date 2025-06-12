@@ -478,11 +478,15 @@ impl Agent for RationalAgent {
                 max_benefit = benefit;
             }
         }
-        // TODO: fix magic number 2 here.
+        let mut action = Action::ProduceGood(best_good);
+
+        // Choose leisure sometimes.
+        // TODO: make this more rational - at least fix magic number 2 here.
         if self.count_timesteps_till_death(None) > 2 {
-            return Action::Leisure;
+            action = Action::Leisure;
         }
-        Action::ProduceGood(best_good)
+        self.action_history.push(action);
+        action
     }
 
     fn choose_action_with_model(&mut self, model: &Model) -> Action {
