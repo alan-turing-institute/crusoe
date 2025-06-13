@@ -1,7 +1,7 @@
 use crate::actions::ActionFlattened as Action;
 use crate::agent::{Agent, AgentType, CrusoeAgent};
 use crate::config::Config;
-use crate::goods::GoodsUnitLevel;
+use crate::goods::{Good, GoodsUnitLevel};
 use crate::learning::history::{History, SAR};
 use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
@@ -10,6 +10,7 @@ use crate::{Model, UInt};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::vec::Vec;
+use strum::IntoEnumIterator;
 
 // TODO: add RL algorithm
 #[derive(Serialize, Deserialize, Debug)]
@@ -81,32 +82,45 @@ impl Simulation {
             }
             let action = agent.choose_action_with_model(model);
 
-            match action {
-                crate::actions::Action::ProduceGood(good) => match good {
-                    crate::goods::Good::Basket => {
-                        println!("{:?}", action)
-                    }
-                    crate::goods::Good::Spear => {
-                        println!("{:?}", action)
-                    }
-                    crate::goods::Good::Smoker => {
-                        println!("{:?}", action)
-                    }
-                    crate::goods::Good::Boat => {
-                        println!("{:?}", action)
-                    }
-                    crate::goods::Good::Timber => {
-                        println!("{:?}", action)
-                    }
-                    crate::goods::Good::Axe => {
-                        println!("{:?}", action)
-                    }
-                    _ => {}
-                },
-                crate::actions::Action::Leisure => {
-                    println!("{:?}", action)
-                }
-            }
+            // match action {
+            //     crate::actions::Action::ProduceGood(good) => match good {
+            //         crate::goods::Good::Basket => {
+            //             println!("{:?}", action)
+            //         }
+            //         crate::goods::Good::Spear => {
+            //             println!("{:?}", action)
+            //         }
+            //         crate::goods::Good::Smoker => {
+            //             println!("{:?}", action)
+            //         }
+            //         crate::goods::Good::Boat => {
+            //             println!("{:?}", action)
+            //         }
+            //         crate::goods::Good::Timber => {
+            //             println!("{:?}", action)
+            //         }
+            //         crate::goods::Good::Axe => {
+            //             println!("{:?}", action)
+            //         }
+            //         _ => {}
+            //     },
+            //     crate::actions::Action::Leisure => {
+            //         println!("{:?}", action)
+            //     }
+            // }
+
+            // if agent.stock().contains(&Good::Basket) {
+            //     println!("Basket");
+            // }
+            // if agent.stock().contains(&Good::Spear) {
+            //     println!("Spear");
+            // }
+            // if agent.stock().contains(&Good::Smoker) {
+            //     println!("Smoker");
+            // }
+            // if agent.stock().contains(&Good::Boat) {
+            //     println!("Boat");
+            // }
 
             agent.step_forward(Some(action));
             self.agent_hist

@@ -61,6 +61,25 @@ impl RationalAgent {
         }
     }
 
+    fn next_missing_input(&self, good: &Good) -> Option<Good> {
+        let required_inputs = good.required_inputs();
+
+        let productivity_per_unit_time = match self.productivity(good).per_unit_time() {
+            Some(x) => x,
+            None => return None,
+        };
+        let production_interval: u32 = ((1 as f32) / productivity_per_unit_time) as u32;
+
+        for required_input in required_inputs.clone() {
+            if required_input.is_material() {
+                if self.stock().material_units(&required_input) < production_interval {
+                    return Some(required_input);
+                }
+            }
+        }
+        required_inputs.into_iter().next()
+    }
+
     /// Is this good producible with the existing stock?
     fn is_producible(&self, good: &Good) -> bool {
         if good.is_consumer() {
@@ -535,9 +554,8 @@ impl Agent for RationalAgent {
         let mut max_benefit = 0.0;
         let mut best_good = Good::Berries; // arbitrary initial good.
         let mut best_downstream_good: Option<Good> = None;
-        let mut best_downstream_capital_good: Option<Good> = None;
 
-        // IF A PARTIALLY-COMPLETED GOOD IS IN THE STOCK, ALWAYS COMPLETE IT!
+        // IF A PARTIALLY-COMPLETED GOOD IS IN THE STOCK, ALWAYS COMPLETE IT.
         for partial in self.stock().partial_stock.iter() {
             return Action::ProduceGood(partial.good);
         }
@@ -549,12 +567,6 @@ impl Agent for RationalAgent {
         // FOOD *AND* ENOUGH MATERIALS ARE AVAILABLE.
 
         for good in Good::iter() {
-            // hack:
-            if good == Good::Axe && self.stock().contains(&Good::Axe) {
-                // println!("HAVE AXE SO IGNORE!");
-                continue;
-            }
-
             let benefit = self.marginal_benefit_of_action(&Action::ProduceGood(good));
             if benefit > max_benefit {
                 best_good = good;
@@ -588,21 +600,55 @@ impl Agent for RationalAgent {
 
         // An available capital good trumps simpler production.
         if let Some(downstream_good) = best_downstream_good {
+            // If required inputs for the downstream good are not alredy in the stock,
+            // produce them first.
+            if !self.is_producible(&downstream_good) {
+                if let Some(missing_input) = self.next_missing_input(&downstream_good) {
+                    return Action::ProduceGood(missing_input);
+                }
+            }
             action = Action::ProduceGood(downstream_good);
+            println!("USE OF CAPITAL GOOD TO PRODUCE: {:?}", downstream_good);
         }
 
         // Choose leisure sometimes.
         // IMP TODO: make this more rational - at least fix magic number here
         // as this makes Smoker or Boat construction impossible.
-        if self.count_timesteps_till_death(None) > 6 {
+        if self.count_timesteps_till_death(None) > 12 {
             action = Action::Leisure;
         }
-        self.action_history.push(action);
+        // MOVED action_history update to choose_action_with_model:
+        // self.action_history.push(action);
         action
     }
 
     fn choose_action_with_model(&mut self, model: &Model) -> Action {
-        self.choose_action() // Rational agent ignores the RL model.
+        // // TMP DEBUGGING:
+        // if self.stock().contains(&Good::Axe) {
+        //     println!("Have Axe");
+        // }
+        // let timber_in_stock = self.stock().material_units(&Good::Timber);
+        // if timber_in_stock > 3 {
+        //     println!(
+        //         "Timber in stock: {:?}",
+        //         self.stock().material_units(&Good::Timber)
+        //     );
+        //     for good in Good::iter() {
+        //         let benefit = self.marginal_benefit_of_action(&Action::ProduceGood(good));
+        //         println!(
+        //             "benefit of action to produce good {:?}: {:?}",
+        //             good, benefit
+        //         );
+        //     }
+        // }
+        if self.stock().contains(&Good::Boat) {
+            println!("Have Boat!!");
+        }
+        let action = self.choose_action(); // Rational agent ignores the RL model.
+        println!("action: {:?}", action);
+
+        self.action_history.push(action);
+        action
     }
     fn action_history(&self) -> &[Action] {
         &self.action_history
