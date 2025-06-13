@@ -80,20 +80,28 @@ impl Simulation {
             if !agent.is_alive() {
                 continue; // Skip dead agents
             }
-            let optimal_action = if (self.time + 1) % 4 == 0 {
-                Action::Leisure.into() // Every 4th day, agent does leisure
-            } else {
-                Action::ProduceBerries.into() // Otherwise, use the agent's chosen action
-            };
-            let optimal_action = if StdRng::from_os_rng().random::<f32>() < self.config.rl.epsilon {
-                ActionNotFlattened::random_weighted(&mut StdRng::from_os_rng(), 0.5)
-            } else {
-                optimal_action
-            };
+
+            // // ---
+            // // Optimal policy test
+            // let optimal_action = if (self.time + 1) % 4 == 0 {
+            //     Action::Leisure.into() // Every 4th day, agent does leisure
+            // } else {
+            //     Action::ProduceBerries.into() // Otherwise, use the agent's chosen action
+            // };
+            // let optimal_action = if StdRng::from_os_rng().random::<f32>() < self.config.rl.epsilon {
+            //     ActionNotFlattened::random_weighted(&mut StdRng::from_os_rng(), 0.5)
+            // } else {
+            //     optimal_action
+            // };
+            // // ---
+
             let action = match agent {
                 AgentType::Crusoe(agent) => agent.choose_action(),
-                // AgentType::Rl(agent) => agent.choose_action_with_model(model),
-                AgentType::Rl(agent) => agent.choose_action_specific(optimal_action),
+                AgentType::Rl(agent) => agent.choose_action_with_model(model),
+                // // ---
+                // Optimal policy test
+                // AgentType::Rl(agent) => agent.choose_action_specific(optimal_action),
+                // // ---
             };
 
             // let action = if self.time < 5 {

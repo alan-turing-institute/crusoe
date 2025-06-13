@@ -61,7 +61,8 @@ impl Default for RLConfig {
     fn default() -> Self {
         RLConfig {
             init_q_value: 0.0,
-            sarsa_n: 50,
+            // sarsa_n: 50,
+            sarsa_n: 10,
             gamma: 0.9,
             alpha: 0.1,
             // epsilon: 0.999,

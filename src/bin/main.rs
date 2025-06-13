@@ -8,9 +8,11 @@ use crusoe::{
     stock::{InvLevel, Stock},
 };
 use itertools::Itertools;
+use log::{debug, info};
 use strum::IntoEnumIterator;
 
 fn main() {
+    env_logger::init();
     let mut sim = Simulation::new(
         Config {
             max_time: 100000,
@@ -46,8 +48,8 @@ fn main() {
                 .unwrap_or(0);
             lifetimes.push(lifetime);
         }
-        if sim.time % 10 == 0 {
-            let n_steps = 100;
+        if sim.time % 1000 == 0 {
+            let n_steps = 1000;
             let avg_reward = sim.agents[0]
                 .reward_history()
                 .iter()
@@ -58,17 +60,18 @@ fn main() {
                 / n_steps as f32;
 
             let avg_lifetime =
-                lifetimes.iter().map(|el| *el as f32).sum::<f32>() / lifetimes.len() as f32;
-            // println!(
-            //     "Time: {}, Avg. Reward: {}, Avg. Lifetime: {}",
-            //     sim.time, avg_reward, avg_lifetime
-            // );
+                // lifetimes.iter().map(|el| *el as f32).sum::<f32>() / lifetimes.len() as f32;
+                lifetimes[lifetimes.len() /2];
+            info!(
+                "Time: {}, Avg. Reward: {}, Avg. Lifetime: {}",
+                sim.time, avg_reward, avg_lifetime
+            );
             // println!("{:?}", lifetimes);
         }
         // Update model given agent history
         model.step(sim.time as i32, &sim.agent_hist);
 
-        println!(
+        debug!(
             "Time: {:5.0} | B(L): {:.1?} | L(L): {:.1?} | B(M): {:.1?} | L(M): {:.1?} | B(H): {:.1?} | L(H): {:.1?} | Alive: {:?} | Action: {:?}",
             sim.time,
             model
