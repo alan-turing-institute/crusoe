@@ -59,57 +59,32 @@ impl Stock {
     pub fn discretise(&self) -> StockDiscrete {
         let mut ds = HashMap::new();
         let config = core_config();
-        for (goods_unit, quantity) in &self.stock {
-            match (goods_unit, quantity) {
-                // (
-                //     GoodsUnit {
-                //         good,
-                //         remaining_lifetime,
-                //     },
-                //     qty,
-                // )
-                // if *qty < config.agent.inv_level_low => {
-                //     ds.insert(
-                //         GoodsUnitLevel::new(*good, RemainingLevel::Low),
-                //         InvLevel::Critical,
-                //     );
-                // }
-                (
-                    GoodsUnit {
-                        good,
-                        remaining_lifetime,
-                    },
-                    qty,
-                ) if *qty < config.agent.inv_level_med => {
-                    ds.insert(
-                        GoodsUnitLevel::new(*good, RemainingLevel::Low),
-                        InvLevel::Low,
-                    );
-                }
-                (
-                    GoodsUnit {
-                        good,
-                        remaining_lifetime,
-                    },
-                    qty,
-                ) if *qty < config.agent.inv_level_high => {
-                    ds.insert(
-                        GoodsUnitLevel::new(*good, RemainingLevel::Low),
-                        InvLevel::Medium,
-                    );
-                }
-                (
-                    GoodsUnit {
-                        good,
-                        remaining_lifetime,
-                    },
-                    qty,
-                ) => {
-                    ds.insert(
-                        GoodsUnitLevel::new(*good, RemainingLevel::Low),
-                        InvLevel::High,
-                    );
-                }
+
+        let mut good_hm = HashMap::new();
+        for (goods_unit, &quantity) in &self.stock {
+            if let Some(existing_qty) = good_hm.get_mut(&goods_unit.good) {
+                *existing_qty += quantity;
+            } else {
+                good_hm.insert(goods_unit.good, quantity);
+            }
+        }
+
+        for (good, &qty) in &good_hm {
+            if qty < config.agent.inv_level_med {
+                ds.insert(
+                    GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                    InvLevel::Low,
+                );
+            } else if qty < config.agent.inv_level_high {
+                ds.insert(
+                    GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                    InvLevel::Medium,
+                );
+            } else {
+                ds.insert(
+                    GoodsUnitLevel::new(*good, RemainingLevel::Low),
+                    InvLevel::High,
+                );
             }
         }
         StockDiscrete { stock: ds }
