@@ -80,7 +80,8 @@ impl Agent for LearningAgent {
                 &self.stock.representation(),
                 &mut StdRng::from_os_rng(),
             );
-            if [ActionFlattened::Leisure, ActionFlattened::ProduceBerries].contains(&action) {
+            // if [ActionFlattened::Leisure, ActionFlattened::ProduceBerries].contains(&action) {
+            if [ActionFlattened::ProduceBerries].contains(&action) {
                 // If the action is leisure or produce berries, we can take it.
                 break action;
             }

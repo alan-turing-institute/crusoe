@@ -23,7 +23,7 @@ impl Default for AgentConfig {
         AgentConfig {
             inv_level_low: 0,
             // inv_level_med: 3,
-            inv_level_med: 3,
+            inv_level_med: 6,
             inv_level_high: 80000,
             // inv_level_low: 20000,
             // inv_level_med: 40000,
@@ -62,10 +62,12 @@ impl Default for RLConfig {
         RLConfig {
             init_q_value: 0.0,
             // sarsa_n: 50,
-            sarsa_n: 10,
+            sarsa_n: 2,
             gamma: 0.9,
             alpha: 0.1,
             // epsilon: 0.999,
+            // epsilon: 0.1,
+            // epsilon: 0.5,
             epsilon: 0.1,
             multi_policy: false,
             // save_model: false,

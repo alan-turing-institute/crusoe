@@ -1,5 +1,5 @@
 use crusoe::{
-    NEGATIVE_REWARD,
+    NEGATIVE_REWARD, UInt,
     actions::ActionFlattened as Action,
     config::Config,
     goods::{Good, GoodsUnitLevel},
@@ -46,7 +46,7 @@ fn main() {
                 .map(|(idx, _)| idx)
                 .last()
                 .unwrap_or(0);
-            lifetimes.push(lifetime);
+            lifetimes.push(lifetime as UInt);
         }
         if sim.time % 1000 == 0 {
             let n_steps = 1000;
@@ -59,14 +59,16 @@ fn main() {
                 .sum::<f32>()
                 / n_steps as f32;
 
-            let avg_lifetime =
-                // lifetimes.iter().map(|el| *el as f32).sum::<f32>() / lifetimes.len() as f32;
-                lifetimes[lifetimes.len() /2];
+            let avg_lifetime = if !lifetimes.is_empty() {
+                lifetimes[lifetimes.len() / 2]
+            } else {
+                sim.time
+            };
             info!(
                 "Time: {}, Avg. Reward: {}, Avg. Lifetime: {}",
                 sim.time, avg_reward, avg_lifetime
             );
-            // println!("{:?}", lifetimes);
+            info!("{:?}", lifetimes);
         }
         // Update model given agent history
         model.step(sim.time as i32, &sim.agent_hist);

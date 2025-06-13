@@ -1,12 +1,16 @@
+use crate::NEGATIVE_REWARD;
 use crate::actions::Action as ActionNotFlattened;
 use crate::actions::ActionFlattened as Action;
+use crate::agent;
 use crate::agent::{Agent, AgentType, CrusoeAgent};
 use crate::config::Config;
 use crate::goods::GoodsUnitLevel;
+use crate::learning::agent_state::DiscrRep;
 use crate::learning::history::{History, SAR};
 use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
 use crate::{Model, UInt};
+use log::debug;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -120,7 +124,9 @@ impl Simulation {
                     agent.stock().clone(),
                     *agent.action_history().last().unwrap(),
                     *agent.reward_history().last().unwrap(),
-                ))
+                ));
+            debug!("{:?}", agent.stock());
+            debug!("{:?}", agent.stock().representation());
         }
         self.after_step();
     }
