@@ -15,6 +15,7 @@ impl From<ActionFlattened> for Action {
         match action {
             ActionFlattened::ProduceBerries => Action::ProduceGood(Good::Berries),
             ActionFlattened::ProduceFish => Action::ProduceGood(Good::Fish),
+            ActionFlattened::ProduceSmokedFish => Action::ProduceGood(Good::SmokedFish),
             ActionFlattened::ProduceBasket => Action::ProduceGood(Good::Basket),
             ActionFlattened::ProduceSpear => Action::ProduceGood(Good::Spear),
             ActionFlattened::ProduceSmoker => Action::ProduceGood(Good::Smoker),
@@ -30,6 +31,7 @@ impl From<ActionFlattened> for Action {
 pub enum ActionFlattened {
     ProduceBerries,
     ProduceFish,
+    ProduceSmokedFish,
     ProduceBasket,
     ProduceSpear,
     ProduceSmoker,
@@ -44,6 +46,7 @@ impl From<Action> for ActionFlattened {
         match action {
             Action::ProduceGood(Good::Berries) => ActionFlattened::ProduceBerries,
             Action::ProduceGood(Good::Fish) => ActionFlattened::ProduceFish,
+            Action::ProduceGood(Good::SmokedFish) => ActionFlattened::ProduceSmokedFish,
             Action::ProduceGood(Good::Basket) => ActionFlattened::ProduceBasket,
             Action::ProduceGood(Good::Spear) => ActionFlattened::ProduceSpear,
             Action::ProduceGood(Good::Smoker) => ActionFlattened::ProduceSmoker,
@@ -61,12 +64,13 @@ impl Action {
             0 => Action::Leisure,
             1 => Action::ProduceGood(Good::Berries),
             2 => Action::ProduceGood(Good::Fish),
-            3 => Action::ProduceGood(Good::Basket),
-            4 => Action::ProduceGood(Good::Spear),
-            5 => Action::ProduceGood(Good::Smoker),
-            6 => Action::ProduceGood(Good::Boat),
-            7 => Action::ProduceGood(Good::Timber),
-            8 => Action::ProduceGood(Good::Axe),
+            3 => Action::ProduceGood(Good::SmokedFish),
+            4 => Action::ProduceGood(Good::Basket),
+            5 => Action::ProduceGood(Good::Spear),
+            6 => Action::ProduceGood(Good::Smoker),
+            7 => Action::ProduceGood(Good::Boat),
+            8 => Action::ProduceGood(Good::Timber),
+            9 => Action::ProduceGood(Good::Axe),
             _ => unreachable!(),
         }
     }
