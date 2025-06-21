@@ -31,6 +31,7 @@ impl Productivity {
 pub enum Good {
     Berries,
     Fish,
+    SmokedFish,
     Basket,
     Spear,
     Smoker,
@@ -44,6 +45,7 @@ impl Good {
         match self {
             Good::Berries => true,
             Good::Fish => true,
+            Good::SmokedFish => true,
             Good::Basket => false,
             Good::Spear => false,
             Good::Smoker => false,
@@ -62,8 +64,7 @@ impl Good {
         }
     }
 
-    /// Gets the default productivity
-    /// **FOR GOODS THAT DO NOT REQUIRE MULTIPLE TIMESTEPS TO COMPLETE**.
+    /// Gets the default productivity.
     pub fn default_productivity(&self, stock: &Stock) -> Productivity {
         match self.multiple_timesteps_to_complete() {
             Some(time_to_complete) => {
@@ -100,17 +101,41 @@ impl Good {
                 }
                 Productivity::Immediate(2)
             }
+            Good::SmokedFish => match stock.contains(&Good::Smoker) {
+                true => {
+                    let stock_of_fish = stock.count_units(&Good::Fish);
+                    match stock_of_fish > 0 {
+                        // Smoked fish are unusual in that productivity is given by
+                        // the existing stock of fish.
+                        true => Productivity::Immediate(stock_of_fish),
+                        false => Productivity::None,
+                    }
+                }
+                false => Productivity::None,
+            },
             Good::Spear => Productivity::Immediate(1),
-            Good::Smoker => panic!("Smoker takes multiple timesteps to complete"),
-            Good::Boat => panic!("Boat takes multiple timesteps to complete"),
+            Good::Smoker => {
+                // Productivity of a Smoker is dependent on access to sufficient Timber.
+                if stock.count_units(&Good::Timber) >= 3 {
+                    return Productivity::Delayed(3);
+                }
+                Productivity::None
+            }
+            Good::Boat => {
+                // Productivity of a Boat is dependent on access to sufficient Timber.
+                if stock.count_units(&Good::Timber) >= 10 {
+                    return Productivity::Delayed(10);
+                }
+                Productivity::None
+            }
             Good::Timber => {
                 // Productivity of timber is dependent on access to an axe.
                 if stock.contains(&Good::Axe) {
                     return Productivity::Immediate(2);
                 }
-                return Productivity::None;
+                Productivity::None
             }
-            Good::Axe => panic!("Axe takes multiple timesteps to complete"),
+            Good::Axe => return Productivity::Delayed(2),
         }
     }
 
@@ -123,6 +148,7 @@ impl Good {
                 Good::Boat => true,
                 _ => false,
             },
+            Good::SmokedFish => matches!(good, Good::Smoker),
             Good::Basket => false,
             Good::Spear => false,
             Good::Smoker => matches!(good, Good::Timber),
@@ -136,44 +162,13 @@ impl Good {
         match self {
             Good::Berries => Vec::new(),
             Good::Fish => Vec::new(),
+            Good::SmokedFish => Vec::new(),
             Good::Basket => vec![Good::Berries],
             Good::Spear => vec![Good::Fish],
-            Good::Smoker => Vec::new(),
+            Good::Smoker => vec![Good::SmokedFish],
             Good::Boat => vec![Good::Fish],
             Good::Timber => vec![Good::Smoker, Good::Boat],
             Good::Axe => vec![Good::Timber],
-        }
-    }
-
-    pub fn is_improved_using(&self, good: &Good) -> bool {
-        match self {
-            Good::Fish => match good {
-                Good::Smoker => true,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-
-    pub fn improves(&self) -> Vec<Good> {
-        match self {
-            Good::Smoker => vec![Good::Fish],
-            _ => Vec::new(),
-        }
-    }
-
-    pub fn is_downsteam_of(&self, good: &Good) -> bool {
-        self.is_produced_using(good) || self.is_improved_using(good)
-    }
-
-    pub fn lifetime_improvement_increment(&self, improved_good: &Good) -> u32 {
-        match self {
-            // Smoker increases lifetime by 60 time units.
-            Good::Smoker => match improved_good {
-                Good::Fish => 60,
-                _ => 0,
-            },
-            _ => 0,
         }
     }
 
@@ -185,6 +180,7 @@ impl Good {
         match self {
             Good::Berries => Vec::new(),
             Good::Fish => Vec::new(),
+            Good::SmokedFish => vec![Good::Smoker, Good::Fish],
             Good::Basket => Vec::new(),
             Good::Spear => Vec::new(),
             Good::Smoker => vec![Good::Timber],
@@ -203,6 +199,7 @@ impl Good {
         match self {
             Good::Berries => None,
             Good::Fish => None,
+            Good::SmokedFish => None,
             Good::Basket => None,
             Good::Spear => None,
             Good::Smoker => Some(3),
@@ -211,25 +208,6 @@ impl Good {
             Good::Axe => Some(2),
         }
     }
-
-    // Hopefully this isn't needed if we adjust the productivity instead.
-    // i.e. every consumer good is measured in the same units as the config
-    // parameter `daily_nutrition`.
-    //
-    // // TODO: make sustanance levels configurable.
-    // /// Returns the number of units required for 1 day's sustanance.
-    // pub fn sustanance(&self) -> Option<UInt> {
-    //     match self {
-    //         Good::Berries => Some(3),
-    //         Good::Fish => Some(1),
-    //         Good::Basket => None,
-    //         Good::Spear => None,
-    //         Good::Smoker => None,
-    //         Good::Boat => None,
-    //         Good::Timber => None,
-    //         Good::Axe => None,
-    //     }
-    // }
 }
 
 // For units of goods, each has a lifetime remaining value before it is destroyed.
@@ -278,6 +256,10 @@ impl GoodsUnit {
                 good: Good::Fish,
                 remaining_lifetime: 1,
             },
+            Good::SmokedFish => GoodsUnit {
+                good: Good::SmokedFish,
+                remaining_lifetime: 30,
+            },
             Good::Basket => GoodsUnit {
                 good: Good::Basket,
                 remaining_lifetime: 10,
@@ -288,7 +270,7 @@ impl GoodsUnit {
             },
             Good::Smoker => GoodsUnit {
                 good: Good::Smoker,
-                remaining_lifetime: 5,
+                remaining_lifetime: 20,
             },
             Good::Boat => GoodsUnit {
                 good: Good::Boat,
@@ -306,11 +288,9 @@ impl GoodsUnit {
     }
 
     /// Degrade this good by one time step.
-    pub fn step_forward(&self, action: Action) -> Option<Self> {
-        // Note: handles materials differently. They are capital goods but can only be used once.
-        // The remaining_lifetime of a material is its time before expiry (like a consumer good).
-
-        match self.good.is_consumer() {
+    pub fn step_forward(&self) -> Option<Self> {
+        // Degrade the lifetime of consumer goods and materials.
+        match self.good.is_consumer() || self.good.is_material() {
             // If this good exists in the stock and is a consumer good, degrade it.
             true => {
                 if self.remaining_lifetime > 1 {
@@ -322,55 +302,8 @@ impl GoodsUnit {
                 // If the remaining_lifetime is 0 (after the step), return None.
                 None
             }
-            // If this is a capital good and the action makes use of it, degrade its
-            // remaining lifetime. Otherwise return it unchanged.
-            false => match action {
-                Action::ProduceGood(produced_good) => {
-                    if produced_good.is_produced_using(&self.good) {
-                        match &self.good.is_material() {
-                            true => {
-                                // If the good is a material, and is used in production, it cannot
-                                // be used again, so return None.
-                                return None;
-                            }
-                            false => {
-                                if self.remaining_lifetime > 1 {
-                                    return Some(GoodsUnit {
-                                        good: self.good,
-                                        remaining_lifetime: self.remaining_lifetime - 1,
-                                    });
-                                }
-                                // If the remaining_lifetime is 0 (after the step), return None.
-                                return None;
-                            }
-                        }
-                    }
-                    // If the good is a material but is *not* used in production, reduce its
-                    // remaining lifetime (as if it were a consumer good).
-                    if self.good.is_material() {
-                        return Some(GoodsUnit {
-                            good: self.good,
-                            remaining_lifetime: self.remaining_lifetime - 1,
-                        });
-                    }
-                    // If the capital good is not used in production (as is not a material),
-                    // it is unchanged.
-                    Some(self.clone())
-                }
-                Action::Leisure => {
-                    match self.good.is_material() {
-                        true => {
-                            // If the good is a material but is *not* used in production, reduce its
-                            // remaining lifetime (as if it were a consumer good).
-                            return Some(GoodsUnit {
-                                good: self.good,
-                                remaining_lifetime: self.remaining_lifetime - 1,
-                            });
-                        }
-                        false => Some(self.clone()),
-                    }
-                }
-            },
+            // If this is a capital good, return it unchanged.
+            false => Some(self.clone()),
         }
     }
 }
@@ -395,13 +328,16 @@ impl PartialGoodsUnit {
         }
     }
 
-    pub fn increment_production(&mut self) -> Option<GoodsUnit> {
+    /// Increments production of this partial goods unit by one timestep and returns
+    /// the new partial goods unit with reduced time to completion, or None if
+    /// production of the good has been completed.
+    pub fn increment_production(mut self) -> Option<PartialGoodsUnit> {
         self.time_to_completion = self.time_to_completion - 1;
         println!("new self.time_to_completion {:?}", self.time_to_completion);
-        if self.time_to_completion == 0 {
-            return Some(GoodsUnit::new(&self.good));
+        match self.time_to_completion == 0 {
+            true => None,
+            false => Some(self),
         }
-        None
     }
 
     // Step forward this partially complete goods unit and penalise any
@@ -425,6 +361,8 @@ impl PartialGoodsUnit {
             .multiple_timesteps_to_complete()
             .expect("PartialGoodsUnit must take multiple timesteps to complete");
 
+        // If the time to complete has increased to its maximum,
+        // remove the partial good altogether.
         if self.time_to_completion == max_time_to_completion {
             return None;
         }
@@ -449,15 +387,13 @@ mod tests {
         };
         assert_eq!(good.remaining_lifetime, 3);
 
-        let action = Action::Leisure;
-        let good = good.step_forward(action).unwrap();
+        let good = good.step_forward().unwrap();
         assert_eq!(good.remaining_lifetime, 2);
 
-        let action = Action::ProduceGood(Good::Berries);
-        let good = good.step_forward(action).unwrap();
+        let good = good.step_forward().unwrap();
         assert_eq!(good.remaining_lifetime, 1);
 
-        let good = good.step_forward(action);
+        let good = good.step_forward();
         assert!(good.is_none());
 
         // Test with a material.
@@ -467,17 +403,12 @@ mod tests {
         };
         assert_eq!(good.remaining_lifetime, 99);
 
-        let action = Action::Leisure;
-        let good = good.step_forward(action).unwrap();
+        // Expect "overnight" degradation (similar to consumer goods).
+        let good = good.step_forward().unwrap();
         assert_eq!(good.remaining_lifetime, 98);
 
-        let action = Action::ProduceGood(Good::Berries);
-        let good = good.step_forward(action).unwrap();
+        let good = good.step_forward().unwrap();
         assert_eq!(good.remaining_lifetime, 97);
-
-        let action = Action::ProduceGood(Good::Boat);
-        let good = good.step_forward(action);
-        assert!(good.is_none());
 
         // Test with a non-material capital good.
         let good = GoodsUnit {
@@ -486,16 +417,15 @@ mod tests {
         };
         assert_eq!(good.remaining_lifetime, 5);
 
-        let action = Action::Leisure;
-        let good = good.step_forward(action).unwrap();
+        // Expect no "overnight" degradation.
+        let good = good.step_forward().unwrap();
         assert_eq!(good.remaining_lifetime, 5);
+    }
 
-        let action = Action::ProduceGood(Good::Berries);
-        let good = good.step_forward(action).unwrap();
-        assert_eq!(good.remaining_lifetime, 5);
-
-        let action = Action::ProduceGood(Good::Fish);
-        let good = good.step_forward(action).unwrap();
-        assert_eq!(good.remaining_lifetime, 4);
+    #[test]
+    fn test_productivity_per_unit_time() {
+        let good = Good::Spear;
+        let stock = Stock::default();
+        assert_eq!(good.default_productivity(&stock).per_unit_time(), Some(1.0));
     }
 }

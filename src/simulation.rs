@@ -55,7 +55,7 @@ impl Simulation {
             time: 0,
             // agents: vec![AgentType::Crusoe(CrusoeAgent::new(0))], // Initialize with one Crusoe agent
             // agents: vec![AgentType::Rl(LearningAgent::new(0))], // Initialize with one RL agent
-            agents: vec![AgentType::Rational(RationalAgent::new(0, 3))], // Initialize with one RL agent
+            agents: vec![AgentType::Rational(RationalAgent::new(0, 3))], // Initialize with one Rational agent
             config,
             agent_hist,
             verbose,
