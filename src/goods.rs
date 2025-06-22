@@ -254,7 +254,7 @@ impl GoodsUnit {
             },
             Good::Fish => GoodsUnit {
                 good: Good::Fish,
-                remaining_lifetime: 1,
+                remaining_lifetime: 2, // Lifetime: day of production plus one more day.
             },
             Good::SmokedFish => GoodsUnit {
                 good: Good::SmokedFish,

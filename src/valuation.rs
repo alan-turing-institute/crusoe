@@ -376,7 +376,7 @@ impl RationalAgent {
             }
         };
 
-        // temp:
+        // // temp:
         // println!("productivity: {:?}", productivity);
 
         let mut sum: f32 = 0.0;
@@ -385,6 +385,7 @@ impl RationalAgent {
         while count != productivity {
             // TODO: discounting.
             sum = sum + dummy_agent.marginal_unit_value_of_consumer_good(good);
+            // println!("sum: {:?}", sum);
             dummy_agent.acquire(GoodsUnit::new(good), 1);
             count = count + 1;
         }
@@ -560,6 +561,7 @@ impl RationalAgent {
         if let Some(good) = additional_good {
             dummy_agent.acquire(GoodsUnit::new(good), 1);
         }
+
         let mut count = 0;
         loop {
             if !dummy_agent.consume(self.daily_nutrition) {
@@ -870,13 +872,19 @@ mod tests {
         // action to produce fish is 1/4.
         assert_eq!(agent.marginal_benefit_of_action(&action), 0.25);
 
-        // // TODO: test when capital goods are available:
-        // // Start again with empty stock.
-        // let mut agent = RationalAgent::new(1, daily_nutrition);
+        // Test when capital goods are available:
+        // Start again with empty stock.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
 
-        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
-        // let action = Action::ProduceGood(Good::Fish);
-        // // assert_eq!(agent.marginal_benefit_of_action(&action), 0.25);
+        agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        let action = Action::ProduceGood(Good::Fish);
+
+        // Given an initial stock consisting of only a spear, the marginal value of the first two
+        // units of fish is zero. The third unit has a marginal value of 1/10. The fourth & fifth
+        // units have a marginal value of zero. The sixth unit has a marginal value of 1/10.
+        // Further units all have a marginal value of zero because they will expire before they can
+        // be consumed. So the marginal benefit of the action to produce (ten) fish is 2/10.
+        assert_eq!(agent.marginal_benefit_of_action(&action), 0.2);
     }
 
     #[test]
@@ -911,8 +919,7 @@ mod tests {
 
         let result =
             agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
-
-        assert!(result == 5.0);
+        assert!(result == 10.0);
 
         // Test when the lower-order good is a capital good (and a material).
         let higher_order_good = Good::Axe;
@@ -922,7 +929,7 @@ mod tests {
             agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
 
         // TODO. This value depends on the temporary workaround hard-coded value for the smoker.
-        assert!(result == 25.0);
+        assert!(result == 50.0);
     }
 
     #[test]
@@ -1010,13 +1017,48 @@ mod tests {
         agent.acquire(GoodsUnit::new(&Good::Spear), 1);
         agent.acquire(GoodsUnit::new(&Good::Berries), 2);
         assert_eq!(agent.productivity(&Good::Fish), Productivity::Immediate(10));
-        // Although the productivity of fish is 10, only 6 can be consumed before they expire.
-        // TODO NEXT.
+        // With a spear, the marginal unit value of both fish and berries falls to 0.1
+        // because 10 fish can be producted in 1 day.
         assert_eq!(agent.marginal_unit_value_of_consumer_good(&Good::Fish), 0.1);
         assert_eq!(
             agent.marginal_unit_value_of_consumer_good(&Good::Berries),
             0.1
         );
+
+        // Start again with an empty stock.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        // With four fish, the marginal unit value of one additional unit of fish is zero,
+        // because it would not increase the agent's survival.
+        agent.acquire(GoodsUnit::new(&Good::Fish), 4);
+        assert_eq!(agent.marginal_unit_value_of_consumer_good(&Good::Fish), 0.0);
+
+        agent.acquire(GoodsUnit::new(&Good::Fish), 1);
+        // With five fish, the marginal unit value of one additional unit of fish is equal to
+        // the minimum possible time to produce an equivalent sustenance, which is by producing
+        // berries at a rate of 4 per day.
+        assert_eq!(agent.stock().count_units(&Good::Fish), 5);
+
+        assert_eq!(
+            agent.marginal_unit_value_of_consumer_good(&Good::Fish),
+            0.25
+        );
+
+        // Start again with an empty stock except for one spear.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+        agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+
+        // With four fish, the marginal unit value of one additional unit of fish is zero,
+        // because it would not increase the agent's survival.
+        agent.acquire(GoodsUnit::new(&Good::Fish), 4);
+        assert_eq!(agent.marginal_unit_value_of_consumer_good(&Good::Fish), 0.0);
+
+        agent.acquire(GoodsUnit::new(&Good::Fish), 1);
+        // With five fish, the marginal unit value of one additional unit of fish is equal to
+        // the minimum possible time to produce an equivalent sustenance, which is by producing
+        // fish at a rate of 10 per day (using the spear).
+        assert_eq!(agent.stock().count_units(&Good::Fish), 5);
+        assert_eq!(agent.marginal_unit_value_of_consumer_good(&Good::Fish), 0.1);
     }
 
     #[test]
@@ -1207,5 +1249,17 @@ mod tests {
             agent.count_timesteps_till_death(Some(&Good::Fish)),
             expected
         );
+
+        // Start again.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        // With 4 fish in stock, one additional unit of fish does not increase the survival time.
+        agent.acquire(fish_unit, 4);
+        assert_eq!(agent.count_timesteps_till_death(Some(&Good::Fish)), 1);
+
+        // With 5 fish in stock, one additional unit of fish increases the survival time by one day.
+        agent.acquire(fish_unit, 1);
+        assert_eq!(agent.stock().count_units(&Good::Fish), 5);
+        assert_eq!(agent.count_timesteps_till_death(Some(&Good::Fish)), 2);
     }
 }
