@@ -1,16 +1,16 @@
 use crate::actions::ActionFlattened as Action;
-use crate::agent::{Agent, AgentType, CrusoeAgent};
+use crate::agent::{Agent, AgentType};
 use crate::config::Config;
-use crate::goods::{Good, GoodsUnitLevel};
+use crate::goods::GoodsUnitLevel;
 use crate::learning::history::{History, SAR};
-use crate::learning::learning_agent::LearningAgent;
+// use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
 use crate::valuation::RationalAgent;
 use crate::{Model, UInt};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::vec::Vec;
-use strum::IntoEnumIterator;
+// use strum::IntoEnumIterator;
 
 // TODO: add RL algorithm
 #[derive(Serialize, Deserialize, Debug)]

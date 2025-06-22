@@ -1,4 +1,4 @@
-use rand::{SeedableRng, rngs::StdRng};
+// use rand::{SeedableRng, rngs::StdRng};
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
@@ -7,8 +7,8 @@ use crate::{
     actions::Action,
     agent::Agent,
     goods::{Good, GoodsUnit, PartialGoodsUnit, Productivity},
-    learning::{agent_state::DiscrRep, reward::Reward},
-    stock::{self, Stock},
+    learning::reward::Reward,
+    stock::Stock,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -404,7 +404,7 @@ impl RationalAgent {
         if !good.is_consumer() {
             panic!("Expected consumer good.")
         }
-        // 1. Count additional days of sustenance from 1 additional unit of g
+        // 1. Count additional days of sustenance from 1 additional unit of the good.
         let additional_sustenance = self.additional_sustenance(good);
 
         // TODO: consider improving this (we don't want discrete jumps or zero valuation for
@@ -438,30 +438,31 @@ impl RationalAgent {
         }
 
         // 2. Initialise the minimum time to produce equivalent sustenance, to the value for
-        // this good. Return zero value if the agent's productivity for this good is None.
-        let productivity_per_unit_time = self.productivity(good).per_unit_time();
-        if productivity_per_unit_time.is_none() {
-            return 0.0;
-        }
+        // Berries (as a default which is known to always have a non-zero productivity).
+        let productivity_per_unit_time = self.productivity(&Good::Berries).per_unit_time();
+
         // Time to produce 1 unit of the good is (1 / amount produced in one day's production).
         let mut min_equiv = (1 as f32) / productivity_per_unit_time.unwrap();
 
         // 3. For every consumer good, compute the time taken to produce the same number of
         // days of sustenance.
         for alt_good in Good::iter() {
-            // Ignore the good itself as we alreday initialised min_equiv for it.
-            if alt_good == *good {
+            // Ignore Berries as we already initialised min_equiv for it.
+            if alt_good == Good::Berries {
                 continue;
             }
             if let Some(t) =
                 self.time_to_equiv_sustenance(alt_good, additional_sustenance, min_equiv)
             {
+                // println!("good: {:?}", good);
+                // println!("alt good: {:?}", alt_good);
+                // println!("t: {:?}", t);
                 if t < min_equiv {
                     min_equiv = t;
                 }
             }
         }
-        // 3. Return the minium equivalent.
+        // 3. Return the minimum equivalent.
         min_equiv
     }
 
@@ -480,33 +481,67 @@ impl RationalAgent {
         let survival_time = self.count_timesteps_till_death(None);
         match alt_good.is_consumer() {
             true => {
-                if let Some(productivity) = self.productivity(&alt_good).per_unit_time() {
-                    let mut count_days = 0;
-                    loop {
-                        // Simulate one day of action to produce the alternative good.
-                        // NB: we truncate productivity as this will be an integer for Productivity::Immediate consumer goods.
-                        dummy_agent.acquire(GoodsUnit::new(&alt_good), productivity.trunc() as u32);
-                        count_days += 1;
+                match self.productivity(&alt_good).per_unit_time() {
+                    Some(_) => {
+                        // Acquire one unit at a time until the additional survival time
+                        // reaches the target time and count the quantity acquired.
+                        // Then call time_to_produce_units on that quantity.
+                        let mut count_units = 0;
+                        loop {
+                            // Acquire one extra unit of the alternative good.
+                            dummy_agent.acquire(GoodsUnit::new(&alt_good), 1);
+                            count_units += 1;
 
-                        // Compute the new survival time with the extra units of the alternative goods.
-                        let new_survival_time = dummy_agent.count_timesteps_till_death(None);
+                            // Compute the new survival time with the extra units of the alternative good.
+                            let new_survival_time = dummy_agent.count_timesteps_till_death(None);
 
-                        // If the additional sustenance exceeds the target sustenance, return
-                        // the equivalent day count necessasry to produce the additional goods.
-                        let additional_survival = new_survival_time - survival_time;
-                        if additional_survival > target_sustenance {
-                            return Some((count_days as f32) / productivity);
-                        }
-                        // If the max limit is already exceeded, return None
-                        if ((count_days as f32) / productivity) > max {
-                            return None;
+                            // If the additional sustenance exceeds the target sustenance, return
+                            // the equivalent day count necessary to produce the additional goods.
+                            let additional_survival = new_survival_time - survival_time;
+                            let t = self.time_to_produce_units(&alt_good, count_units);
+                            if additional_survival >= target_sustenance {
+                                return t;
+                            }
+                            // If the max limit is already exceeded, return None.
+                            if !t.is_none() && t.unwrap() > max {
+                                return None;
+                            }
                         }
                     }
+                    None => None, // Return None if marginal productivity of the alt_good is None.
                 }
-                // If the marginal productivity of the alt_good is None, return None
-                None
             }
             false => None,
+        }
+    }
+
+    /// Returns the (decimal) number of time units required to produce a given quantity of a given
+    /// good (given the existing stock), taking into account productivity.
+    fn time_to_produce_units(&self, good: &Good, quantity: UInt) -> Option<f32> {
+        if quantity == 0 {
+            return Some(0.0);
+        }
+        let prior_qty = self.stock().count_units(good);
+        let mut count = 0;
+        let mut dummy_agent = self.clone();
+        loop {
+            let productivity = dummy_agent.productivity(good);
+            if productivity == Productivity::None {
+                return None;
+            }
+            dummy_agent.act(Action::ProduceGood(*good));
+            let produced_qty = dummy_agent.stock().count_units(good) - prior_qty;
+            count += 1;
+            if produced_qty >= quantity {
+                // Amount produced on the last day is 1 / productivity per unit time.
+                let final_day_production = productivity.per_unit_time().unwrap();
+                let excess = produced_qty - quantity;
+                let final_day_required_production = final_day_production - excess as f32;
+                // Time taken to produce the desired quantity is the number of full days of
+                // productivity, plus part of the final day.
+                let part_day = final_day_required_production / final_day_production;
+                return Some((count - 1) as f32 + part_day);
+            }
         }
     }
 
@@ -527,11 +562,10 @@ impl RationalAgent {
         }
         let mut count = 0;
         loop {
-            let action = Action::Leisure;
             if !dummy_agent.consume(self.daily_nutrition) {
                 break; // Break out as soon as death happens.
             }
-            dummy_agent.set_stock(dummy_agent.stock().step_forward(action));
+            dummy_agent.set_stock(dummy_agent.stock().step_forward(Action::Leisure));
             count += 1;
         }
         count
@@ -743,7 +777,18 @@ mod tests {
         let mut agent = RationalAgent::new(1, daily_nutrition);
 
         agent.acquire(GoodsUnit::new(&Good::Berries), 10);
+        agent.acquire(GoodsUnit::new(&Good::Fish), 10);
         agent.acquire(GoodsUnit::new(&Good::Axe), 1);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+        agent.acquire(GoodsUnit::new(&Good::Spear), 1);
         // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
         for good in Good::iter() {
             let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
@@ -824,6 +869,14 @@ mod tests {
         // of fish is zero but the value of the second is 1/4. So the marginal benefit of the
         // action to produce fish is 1/4.
         assert_eq!(agent.marginal_benefit_of_action(&action), 0.25);
+
+        // // TODO: test when capital goods are available:
+        // // Start again with empty stock.
+        // let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        // let action = Action::ProduceGood(Good::Fish);
+        // // assert_eq!(agent.marginal_benefit_of_action(&action), 0.25);
     }
 
     #[test]
@@ -950,6 +1003,98 @@ mod tests {
             agent.marginal_unit_value_of_consumer_good(&Good::Berries),
             0.25
         );
+
+        // Start again with an empty stock.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        agent.acquire(GoodsUnit::new(&Good::Berries), 2);
+        assert_eq!(agent.productivity(&Good::Fish), Productivity::Immediate(10));
+        // Although the productivity of fish is 10, only 6 can be consumed before they expire.
+        // TODO NEXT.
+        assert_eq!(agent.marginal_unit_value_of_consumer_good(&Good::Fish), 0.1);
+        assert_eq!(
+            agent.marginal_unit_value_of_consumer_good(&Good::Berries),
+            0.1
+        );
+    }
+
+    #[test]
+    fn test_time_to_equiv_sustenance() {
+        let daily_nutrition = 3;
+        let agent = RationalAgent::new(1, daily_nutrition);
+
+        // When the agent has no capital goods, producing fish will take two days to produce
+        // (just over) one day's sustenance. Four units will have been produced, which is 4/3 of
+        // the target sustenance. So it took 3/2 days to produce one day's sustenance.
+        let result = agent.time_to_equiv_sustenance(Good::Fish, 1, 2.0);
+        assert_eq!(result, Some(1.5));
+
+        // Producing berries extends their lifetime by 1 day and the productivity for berries is
+        // four. So the time taken to produce 1 day's sustenance is 3/4.
+        let result = agent.time_to_equiv_sustenance(Good::Berries, 1, 1.0);
+        assert_eq!(result, Some(0.75));
+
+        // agent.acquire(GoodsUnit::new(&Good::Berries), 2);
+        // assert_eq!(result, Some(0.25));
+
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        // With a spear, 10 units of fish can be produced per day, so it takes 3/10 of a day to
+        // produce one day's sustenance.
+        agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        let result = agent.time_to_equiv_sustenance(Good::Fish, 1, 0.5);
+        assert_eq!(result, Some(0.3));
+        // The spear does not change the agent's productivity for berries.
+        let result = agent.time_to_equiv_sustenance(Good::Berries, 1, 0.5);
+        assert_eq!(result, Some(0.75));
+    }
+
+    #[test]
+    fn test_time_to_produce_units() {
+        let daily_nutrition = 3;
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        // With no capital goods, the time to produce 3 units of berries is 3/4 days.
+        assert_eq!(agent.time_to_produce_units(&Good::Berries, 3), Some(0.75));
+
+        // With no capital goods, the time to produce 3 units of fish is 3/2 days.
+        assert_eq!(agent.time_to_produce_units(&Good::Fish, 3), Some(1.5));
+
+        // With no capital goods, the time to produce 13 units of fish is 13/2 days.
+        assert_eq!(agent.time_to_produce_units(&Good::Fish, 13), Some(6.5));
+
+        // With no capital goods, units of smoked fish cannot be produced.
+        assert!(agent.time_to_produce_units(&Good::SmokedFish, 13).is_none());
+
+        // With a new spear, the time to produce 13 units of fish is 1 + 3/10 days.
+        agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        assert_eq!(agent.time_to_produce_units(&Good::Fish, 13), Some(1.3));
+
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+        // With an old spear, the time to produce 13 units of fish is 1 + 3/2 days.
+        agent.acquire(
+            GoodsUnit {
+                good: Good::Spear,
+                remaining_lifetime: 1,
+            },
+            1,
+        );
+        assert_eq!(agent.time_to_produce_units(&Good::Fish, 13), Some(2.5));
+
+        // Test with production of capital goods.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+        assert_eq!(agent.time_to_produce_units(&Good::Spear, 1), Some(1.0));
+
+        assert_eq!(agent.time_to_produce_units(&Good::Timber, 5), None);
+        assert_eq!(agent.time_to_produce_units(&Good::Smoker, 1), None);
+        assert_eq!(agent.time_to_produce_units(&Good::Boat, 1), None);
+
+        assert_eq!(agent.time_to_produce_units(&Good::Axe, 1), Some(2.0));
+
+        agent.acquire(GoodsUnit::new(&Good::Axe), 1);
+        // With an axe, it takes 5/2 days to produce 5 units of timber.
+        assert_eq!(agent.time_to_produce_units(&Good::Timber, 5), Some(2.5));
     }
 
     #[test]
