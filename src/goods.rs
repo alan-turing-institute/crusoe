@@ -116,15 +116,17 @@ impl Good {
             Good::Spear => Productivity::Immediate(1),
             Good::Smoker => {
                 // Productivity of a Smoker is dependent on access to sufficient Timber.
-                if stock.count_units(&Good::Timber) >= 3 {
-                    return Productivity::Delayed(3);
+                let duration = 3;
+                if stock.count_units(&Good::Timber) >= duration {
+                    return Productivity::Delayed(duration);
                 }
                 Productivity::None
             }
             Good::Boat => {
                 // Productivity of a Boat is dependent on access to sufficient Timber.
-                if stock.count_units(&Good::Timber) >= 10 {
-                    return Productivity::Delayed(10);
+                let duration = 7;
+                if stock.count_units(&Good::Timber) >= duration {
+                    return Productivity::Delayed(duration);
                 }
                 Productivity::None
             }
@@ -202,8 +204,9 @@ impl Good {
             Good::SmokedFish => None,
             Good::Basket => None,
             Good::Spear => None,
+            // TODO: avoid magic numbers that must match those in default_productivity!.
             Good::Smoker => Some(3),
-            Good::Boat => Some(10),
+            Good::Boat => Some(7),
             Good::Timber => None,
             Good::Axe => Some(2),
         }
@@ -250,7 +253,7 @@ impl GoodsUnit {
         match good {
             Good::Berries => GoodsUnit {
                 good: Good::Berries,
-                remaining_lifetime: 10,
+                remaining_lifetime: 8,
             },
             Good::Fish => GoodsUnit {
                 good: Good::Fish,

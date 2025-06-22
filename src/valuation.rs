@@ -83,12 +83,18 @@ impl RationalAgent {
     /// Is this good producible with the existing stock?
     fn is_producible(&self, good: &Good) -> bool {
         if good.is_consumer() {
+            for input in good.required_inputs() {
+                if !self.stock().contains(&input) {
+                    return false;
+                }
+            }
             return true;
         }
         let productivity_per_unit_time = match self.productivity(good).per_unit_time() {
             Some(x) => x,
             None => return false,
         };
+
         // Capital good is not producible unless there are enough saved consumer goods in the
         // stock to last through the interval of production.
         let production_interval: u32 = ((1 as f32) / productivity_per_unit_time) as u32;
@@ -133,7 +139,6 @@ impl RationalAgent {
         if !self.is_producible(good) {
             return 0.0;
         }
-
         productivity_per_unit_time * self.marginal_unit_value_of_capital_good(good)
     }
 
@@ -896,9 +901,55 @@ mod tests {
         // because the existing axe provides the same number of days use
         // as an additional one would.
         agent.acquire(GoodsUnit::new(&Good::Axe), 1);
-        assert!(agent.marginal_benefit_of_action(&action) == 12.5);
+        assert_eq!(agent.marginal_benefit_of_action(&action), 12.5);
 
-        // TODO: now check the marginal benifit of producing timber.
+        // TODO: now check the marginal benefit of producing timber.
+
+        // Start again with empty stock.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        // With no food in stock, the marginal benefit of producing a spear is zero.
+        let action = Action::ProduceGood(Good::Spear);
+        assert_eq!(agent.marginal_benefit_of_action(&action), 0.0);
+
+        // With one day's food in stock, the marginal benefit of producing a spear is non-zero.
+        agent.acquire(GoodsUnit::new(&Good::Berries), 3);
+        assert_eq!(agent.marginal_benefit_of_action(&action), 2.5);
+
+        // Start again with empty stock.
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        // With insufficient food or materials in stock, the marginal benefit
+        // of producing a boat is zero.
+        let action = Action::ProduceGood(Good::Boat);
+        assert_eq!(agent.marginal_benefit_of_action(&action), 0.0);
+
+        // With sufficient food and materials in stock, the marginal benefit
+        // of producing a boat is non-zero.
+        agent.acquire(GoodsUnit::new(&Good::Timber), 7);
+        agent.acquire(GoodsUnit::new(&Good::Berries), 21);
+        // TODO: check this (seems low, but might be due to short lifetime of fish):
+        assert_eq!(agent.marginal_benefit_of_action(&action), 0.71428573);
+
+        // // IMP TODO: THIS OUGHT TO FAIL! THE EXISTENCE OF THE SMOKER SHOULD BE TAKEN
+        // INTO ACCOUNT WHEN JUDGING THE MARGINAL BENEFIT OF A BOAT. BUT THIS REQUIRES MULTI-STEP
+        // ACTIONS TO BE CONSIDERED.
+        // agent.acquire(GoodsUnit::new(&Good::Smoker), 1);
+        // assert_eq!(agent.marginal_benefit_of_action(&action), 0.71428573);
+
+        // // Suppose the agent has 30 units of berries and enough timber to produce a boat.
+        // agent.acquire(GoodsUnit::new(&Good::Berries), 30);
+
+        // println!("here");
+        // let action = Action::ProduceGood(Good::Fish);
+
+        // // Production of a boat has a marginal benefit of zero because
+        // // the berries would expire before production is complete.
+        // assert!(agent.marginal_benefit_of_action(&action) == 0.0);
+
+        // // Suppose the agent also has 3 units of smoked fish.
+        // agent.acquire(GoodsUnit::new(&Good::SmokedFish), 30);
+        // assert!(agent.marginal_benefit_of_action(&action) == 0.0);
     }
 
     #[test]
@@ -914,7 +965,7 @@ mod tests {
     #[test]
     fn test_value_generated_by_higher_order_good() {
         let daily_nutrition = 3;
-        let mut agent = RationalAgent::new(1, daily_nutrition);
+        let agent = RationalAgent::new(1, daily_nutrition);
 
         // Test when the lower-order good is a consumer good.
         let higher_order_good = Good::Basket;
@@ -927,13 +978,21 @@ mod tests {
         // other unit test case).
         assert_eq!(result, 2.5);
 
+        let higher_order_good = Good::Boat;
+        let lower_order_good = Good::Fish;
+
+        let result =
+            agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
+
+        assert_eq!(result, 10.0);
+
         // Test when the lower-order good is a capital good and the higher-order good is a material.
         let higher_order_good = Good::Timber;
         let lower_order_good = Good::Boat;
 
         let result =
             agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
-        assert!(result == 10.0);
+        assert_eq!(result, 10.0);
 
         // Test when the lower-order good is a capital good (and a material).
         let higher_order_good = Good::Axe;
@@ -943,7 +1002,7 @@ mod tests {
             agent.value_generated_by_higher_order_good(&higher_order_good, &lower_order_good);
 
         // TODO. This value depends on the temporary workaround hard-coded value for the smoker.
-        assert!(result == 50.0);
+        assert_eq!(result, 50.0);
     }
 
     #[test]

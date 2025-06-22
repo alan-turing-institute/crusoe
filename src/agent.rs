@@ -722,7 +722,7 @@ mod tests {
         stock.add(
             GoodsUnit {
                 good: Good::Berries,
-                remaining_lifetime: 10,
+                remaining_lifetime: 8,
             },
             2,
         );
@@ -733,7 +733,7 @@ mod tests {
         stock.add(
             GoodsUnit {
                 good: Good::Berries,
-                remaining_lifetime: 10,
+                remaining_lifetime: 8,
             },
             1,
         );
