@@ -11,7 +11,7 @@ use strum::IntoEnumIterator;
 fn main() {
     let mut sim = Simulation::new(
         Config {
-            max_time: 1000000,
+            max_time: 500,
             daily_nutrition: 3,
             ..Config::default()
         },
@@ -30,8 +30,8 @@ fn main() {
 
     while sim.time < sim.config.max_time {
         sim.step_forward(&model);
-        if sim.time % 1000 == 0 {
-            let n_steps = 10000;
+        if sim.time % 50 == 0 {
+            let n_steps = 10;
             let avg_reward = sim.agents[0]
                 .reward_history()
                 .iter()
@@ -50,6 +50,6 @@ fn main() {
     // println!("Actions:  {0:?}", sim.agents[0]);
 
     // Write sim to disk
-    let s = serde_json::to_string(&sim).unwrap();
-    // println!("{s}");
+    let s = serde_json::to_string_pretty(&sim).unwrap();
+    println!("{s}");
 }
