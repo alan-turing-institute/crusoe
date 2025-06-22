@@ -1,7 +1,7 @@
 use crate::actions::ActionFlattened as Action;
 use crate::agent::{Agent, AgentType};
 use crate::config::Config;
-use crate::goods::GoodsUnitLevel;
+use crate::goods::{Good, GoodsUnitLevel};
 use crate::learning::history::{History, SAR};
 // use crate::learning::learning_agent::LearningAgent;
 use crate::stock::{InvLevel, Stock};
