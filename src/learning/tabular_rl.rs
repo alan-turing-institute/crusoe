@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::fs::File;
-use std::io::Write;
+// use std::fs::File;
+// use std::io::Write;
 use std::marker::PhantomData;
 use strum::IntoEnumIterator;
 
@@ -113,8 +113,8 @@ where
                     .get(&traj[tau].representation())
                     .expect("all possible state-actions will be in the QTable");
                 q_tau += core_config().rl.alpha * (g - q_tau);
-                let old_q = tab.insert(traj[tau].representation(), q_tau);
-                // println!("{:?} -> {:?}", old_q, q_tau)
+                let _old_q = tab.insert(traj[tau].representation(), q_tau);
+                // println!("{:?} -> {:?}", _old_q, q_tau)
             }
         }
     }
@@ -134,13 +134,13 @@ where
     }
 
     pub fn sample_action_by_id(&self, id: u32, state: &Vec<(S, L)>, rng: &mut StdRng) -> A {
-        let (a, q_optimal) = self
+        let (a, _q_optimal) = self
             .q_tbls
             .get(&self.policy_id(id))
             .expect("qtable was initialised for all agent id's")
             .sample_action(state, rng);
         if id == 0 {
-            // println!("{}", q_optimal)
+            // println!("{}", _q_optimal)
         }
         a
     }
