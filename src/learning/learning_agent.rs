@@ -107,7 +107,7 @@ impl Agent for LearningAgent {
         }
         // Update stock
         for (good, qty) in stock_change {
-            self.stock.remove(&good, qty);
+            let _ = self.stock.remove(&good, qty);
         }
         // Returns false if the agent dies from lack of nutrients
         if outstanding_nutritional_units > 0 {
@@ -127,7 +127,7 @@ impl Agent for LearningAgent {
                 match productivity {
                     Productivity::Immediate(qty) => self.stock.add(GoodsUnit::new(&good), qty),
                     Productivity::Delayed(_) => {
-                        if let Some(mut partial_good) = self.stock.get_partial(good) {
+                        if let Some(partial_good) = self.stock.get_partial(good) {
                             // If a partial good already exists, do the next step of production.
                             partial_good.increment_production();
                         } else {

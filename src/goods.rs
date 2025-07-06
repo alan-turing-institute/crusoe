@@ -1,6 +1,6 @@
 use crate::{UInt, actions::Action, stock::Stock};
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumIter;
+use strum_macros::{Display, EnumIter};
 
 use crate::stock::RemainingLevel;
 use strum::IntoEnumIterator;
@@ -27,7 +27,7 @@ impl Productivity {
 }
 
 // A good in the abstract (as opposed to particular units of a good).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIter, Display)]
 pub enum Good {
     Berries,
     Fish,

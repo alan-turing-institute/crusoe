@@ -41,10 +41,6 @@ impl RationalAgent {
     /// We define the marginal benefit of an action to produce a consumer good $g$, given existing
     /// stock $S$, as the (discounted) sum of the marginal values of the additional units.
     fn marginal_benefit_of_action(&self, action: &Action) -> f32 {
-        // IMP TODO: Must take into account the fact that action to produce delayed-productivity
-        // capital goods is only beneficial if the agent's stock already contains sufficient units
-        // of consumer goods to complete the production of the capital good.
-
         // TODO: include naive discounting in the case of delayed-production higher-order goods.
         // i.e. disount over the interval of production (but nott the intervals between uses).
 
@@ -97,8 +93,8 @@ impl RationalAgent {
 
         // Capital good is not producible unless there are enough saved consumer goods in the
         // stock to last through the interval of production.
-        let production_interval: u32 = ((1 as f32) / productivity_per_unit_time) as u32;
-        if self.count_timesteps_till_death(None) < production_interval {
+        let production_interval = (1 as f32) / productivity_per_unit_time;
+        if (self.count_timesteps_till_death(None) as f32) < production_interval {
             return false;
         }
 
@@ -111,7 +107,8 @@ impl RationalAgent {
                     return false;
                 }
                 // One unit of material is required for each timestep in the production interval.
-                if self.stock().count_material_units(&required_input) < production_interval {
+                if (self.stock().count_material_units(&required_input) as f32) < production_interval
+                {
                     return false;
                 }
             }
@@ -120,7 +117,9 @@ impl RationalAgent {
     }
 
     /// Returns the marginal benefit to the agent of producing a capital good,
-    /// given the existing stock.
+    /// given the existing stock. Takes into account the fact that action to produce
+    /// capital goods is only beneficial if the agent's stock already contains sufficient
+    /// units of consumer goods to complete the production of the capital good.
     fn marginal_benefit_of_producing_capital_goods(&self, good: &Good) -> f32 {
         if good.is_consumer() {
             panic!("Expected capital good.")
@@ -131,11 +130,7 @@ impl RationalAgent {
             None => return 0.0,
         };
 
-        // // Marginal benefit is *zero* unless there is enough stock to finish production.
-        // let production_interval: u32 = ((1 as f32) / productivity_per_unit_time) as u32;
-        // if self.count_timesteps_till_death(None) < production_interval {
-        //     return 0.0;
-        // }
+        // Marginal benefit is *zero* unless there is enough stock to finish production.
         if !self.is_producible(good) {
             return 0.0;
         }
@@ -202,7 +197,8 @@ impl RationalAgent {
             for goods_unit_in_stock in capital_goods_in_stock {
                 dummy_agent
                     .stock_mut()
-                    .remove(goods_unit_in_stock.0, *goods_unit_in_stock.1);
+                    .remove(goods_unit_in_stock.0, *goods_unit_in_stock.1)
+                    .expect("Good known to exist.");
             }
         }
         if lower_order_good.is_consumer() {
@@ -271,14 +267,19 @@ impl RationalAgent {
         }
 
         // Check that the productivity with the capital good exceeds that without.
+        // NOTE: THIS IS ONLY TRUE IF THE STOCK DOES NOT CONTAIN ANOTHER CAPITAL GOOD
+        // WHOSE PRODUCTIVITY EXCEEDS THAT OF THE ONE IN QUESTION.
+        assert!(productivity_with >= productivity_sans);
         if productivity_with == productivity_sans {
             println!("valuing capital good: {:?}", capital_good);
             println!("for use producing consumer good: {:?}", consumer_good);
-            println!("productivity_with: {:?}", productivity_with);
-            println!("productivity_sans: {:?}", productivity_sans);
-            println!("stock: {:?}", dummy_agent.stock());
+            println!(
+                "productivity_with == productivity_sans: {:?}",
+                productivity_with
+            );
+            print!("{}", dummy_agent.stock());
+            return 0.0;
         }
-        assert!(productivity_with > productivity_sans);
 
         let mut sum: f32 = 0.0;
         let mut count = 0;
@@ -565,17 +566,23 @@ impl Agent for RationalAgent {
     fn choose_action(&mut self) -> Action {
         let mut max_benefit = 0.0;
         let mut best_good = Good::Berries; // arbitrary initial good.
-        let mut best_downstream_good: Option<Good> = None;
+        // let mut best_downstream_good: Option<Good> = None;
 
         // IF A PARTIALLY-COMPLETED GOOD IS IN THE STOCK, ALWAYS COMPLETE IT.
         for partial in self.stock().partial_stock.iter() {
             return Action::ProduceGood(partial.good);
         }
+
+        // TODO NEXT:
+        // - SIMPLIFY THE LOGIC HERE BY MOVING RELEVANT BITS TO marginal_benefit_of_action.
+        // - HERE THE AGENT SHOULD SIMPLY CHOOSE THE ACTION WITH THE GREATEST MARGINAL BENEFIT
+        //      - EXCEPT WHEN COMPLETING PARTIALLY-COMPLETED GOODS
+
         // if self.stock().partial_stock.len() > 0 {
         //     let partial = &self.stock().partial_stock.pop().unwrap();
         // }
 
-        // TODO NEXT: UPDATE BENEFIT/VALUE BIT SO THAT CAPITAL GOODS ARE ONLY STARTED IF ENOUGH
+        // TODO: UPDATE BENEFIT/VALUE BIT SO THAT CAPITAL GOODS ARE ONLY STARTED IF ENOUGH
         // FOOD *AND* ENOUGH MATERIALS ARE AVAILABLE.
 
         for good in Good::iter() {
@@ -590,44 +597,47 @@ impl Agent for RationalAgent {
                 best_good = good;
                 max_benefit = benefit;
             }
-            // If we have a capital good we should use it!
-            if !good.is_consumer() {
-                if self.stock().contains(&good) {
-                    let produces = good.produces();
-                    let mut max_productivity = 0;
-                    for downsteam_good in produces {
-                        if downsteam_good.is_consumer() {
-                            let productivity =
-                                self.productivity(&downsteam_good).per_unit_time().unwrap() as u32;
-                            // NOTE: we assume all consumer goods are measured in equivalent units here.
-                            // i.e. 1 unit of berries provides equivalent sustenance to 1 unit of fish.
-                            if productivity > max_productivity {
-                                max_productivity = productivity;
-                                best_downstream_good = Some(downsteam_good);
-                            }
-                        } else {
-                            // TODO. Need to handle downstream capital goods.
-                            // TEMP SIMPLE ATTEMPT (WILL FAIL FOR TIMBER => Smoker vs Boat)
-                            best_downstream_good = Some(downsteam_good);
-                        }
-                    }
-                }
-            }
+
+            // TODO: EITHER MOVE THIS TO marginal_benefit_of_action OR DISCARD IT ALTOGETHER
+            // (SINCE THE VALUATION PROCESS SHOULD TAKE CARE OF THIS):
+            // // If we have a capital good we should use it!
+            // if !good.is_consumer() {
+            //     if self.stock().contains(&good) {
+            //         let produces = good.produces();
+            //         let mut max_productivity = 0;
+            //         for downsteam_good in produces {
+            //             if downsteam_good.is_consumer() {
+            //                 let productivity =
+            //                     self.productivity(&downsteam_good).per_unit_time().unwrap() as u32;
+            //                 // NOTE: we assume all consumer goods are measured in equivalent units here.
+            //                 // i.e. 1 unit of berries provides equivalent sustenance to 1 unit of fish.
+            //                 if productivity > max_productivity {
+            //                     max_productivity = productivity;
+            //                     best_downstream_good = Some(downsteam_good);
+            //                 }
+            //             } else {
+            //                 // TODO. Need to handle downstream capital goods.
+            //                 // TEMP SIMPLE ATTEMPT (WILL FAIL FOR TIMBER => Smoker vs Boat)
+            //                 best_downstream_good = Some(downsteam_good);
+            //             }
+            //         }
+            //     }
+            // }
         }
         let mut action = Action::ProduceGood(best_good);
 
-        // An available capital good trumps simpler production.
-        if let Some(downstream_good) = best_downstream_good {
-            // If required inputs for the downstream good are not alredy in the stock,
-            // produce them first.
-            if !self.is_producible(&downstream_good) {
-                if let Some(missing_input) = self.next_missing_input(&downstream_good) {
-                    return Action::ProduceGood(missing_input);
-                }
-            }
-            action = Action::ProduceGood(downstream_good);
-            // println!("USE OF CAPITAL GOOD TO PRODUCE: {:?}", downstream_good);
-        }
+        // // An available capital good trumps simpler production.
+        // if let Some(downstream_good) = best_downstream_good {
+        //     // If required inputs for the downstream good are not alredy in the stock,
+        //     // produce them first.
+        //     if !self.is_producible(&downstream_good) {
+        //         if let Some(missing_input) = self.next_missing_input(&downstream_good) {
+        //             return Action::ProduceGood(missing_input);
+        //         }
+        //     }
+        //     action = Action::ProduceGood(downstream_good);
+        //     // println!("USE OF CAPITAL GOOD TO PRODUCE: {:?}", downstream_good);
+        // }
 
         // Choose leisure sometimes.
         // IMP TODO: make this more rational - at least fix magic number here
@@ -735,13 +745,86 @@ mod tests {
 
         agent.acquire(GoodsUnit::new(&Good::Timber), 4);
         assert!(agent.is_producible(&Good::Smoker));
+
+        // Start again.
+        let daily_nutrition = 3;
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        agent.acquire(GoodsUnit::new(&Good::Berries), 1);
+        agent.acquire(GoodsUnit::new(&Good::Axe), 1);
+
+        assert!(!agent.is_producible(&Good::Timber));
+        agent.acquire(GoodsUnit::new(&Good::Berries), 3);
+        assert!(agent.is_producible(&Good::Timber));
+    }
+
+    #[test]
+    fn test_agent_behaviour() {
+        let daily_nutrition = 3;
+        let mut agent = RationalAgent::new(1, daily_nutrition);
+
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Berries));
+        agent.acquire(GoodsUnit::new(&Good::Berries), 4);
+
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Basket));
+        agent.acquire(GoodsUnit::new(&Good::Basket), 3);
+
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Spear));
+        agent.acquire(GoodsUnit::new(&Good::Spear), 4);
+
+        print!("{}", agent.stock());
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        // TODO: instead of Berries, Produce Basket is being chosen.
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Berries));
+        agent.acquire(GoodsUnit::new(&Good::Berries), 8);
+
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Axe));
+        agent.acquire(GoodsUnit::new(&Good::Axe), 1);
+
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Timber));
+        agent.acquire(GoodsUnit::new(&Good::Timber), 8);
+
+        print!("{}", agent.stock());
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Berries));
+        agent.acquire(GoodsUnit::new(&Good::Berries), 8);
+
+        let action = agent.choose_action();
+        assert_eq!(action, Action::ProduceGood(Good::Berries));
+        agent.acquire(GoodsUnit::new(&Good::Berries), 800);
+
+        let action = agent.choose_action();
+        println!("{:?}", action);
     }
 
     #[test]
     fn test_valuations_and_benefits() {
         // TODO NEXT:
         // call marginal_benefit_of_action for each action, with an empty stock,
-        // and try to work out why only baskets and axes are produced.e
+        // and try to work out why only baskets and axes are produced.
         let daily_nutrition = 3;
         let mut agent = RationalAgent::new(1, daily_nutrition);
 
@@ -776,6 +859,93 @@ mod tests {
                 good, benefit
             );
         }
+        println!();
+
+        agent.acquire(GoodsUnit::new(&Good::Timber), 20);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        // TODO: Smoker has value 0 until Fish are acquired, but Fish have low value ...
+        agent.acquire(GoodsUnit::new(&Good::Fish), 10);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        // TODO: value of Smoker persistently high
+        agent.acquire(GoodsUnit::new(&Good::Smoker), 25);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        agent.acquire(GoodsUnit::new(&Good::Basket), 4);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        agent.acquire(GoodsUnit::new(&Good::SmokedFish), 10);
+        agent.stock_mut().remove_all(&Good::Fish);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        // YAY! BOAT BECOMES VALUABLE HERE!
+        // BECAUSE WE HAVE SMOKED FISH WHICH LAST LONG ENOUGH TO PRODUCE THE BOAT!!
+
+        agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
+        // YAY! BOAT BECOMES *MOST* VALUABLE HERE!
+
+        agent.acquire(GoodsUnit::new(&Good::Boat), 1);
+        // agent.acquire(GoodsUnit::new(&Good::Spear), 1);
+        for good in Good::iter() {
+            let benefit = agent.marginal_benefit_of_action(&Action::ProduceGood(good));
+            println!(
+                "benefit of action to produce good {:?}: {:?}",
+                good, benefit
+            );
+        }
+        println!();
+
         // TODO: consider favouring capital goods that are downstream of already acquired capital goods.
     }
 
@@ -934,6 +1104,8 @@ mod tests {
         // // IMP TODO: THIS OUGHT TO FAIL! THE EXISTENCE OF THE SMOKER SHOULD BE TAKEN
         // INTO ACCOUNT WHEN JUDGING THE MARGINAL BENEFIT OF A BOAT. BUT THIS REQUIRES MULTI-STEP
         // ACTIONS TO BE CONSIDERED.
+        // BUT DON'T WE ALREADY DO THAT? THE RECURSIVE VALUATION METHOD *SHOULD* TAKE MULTI-STEP
+        // ACTIONS INTO ACCOUNT BECAUSE IT CONSIDERS THE BEST NEXT ACTION, AND THE ONE AFTER THAT, ETC.
         // agent.acquire(GoodsUnit::new(&Good::Smoker), 1);
         // assert_eq!(agent.marginal_benefit_of_action(&action), 0.71428573);
 

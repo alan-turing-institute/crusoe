@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use thiserror::Error;
@@ -374,6 +374,17 @@ impl Stock {
             if qty > 1 {
                 self.stock.insert(goods_unit, qty - 1);
             }
+        }
+        Ok(())
+    }
+}
+
+impl Display for Stock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Stock:")?;
+        for good in self.goods() {
+            let spaces = " ".repeat(16 - good.to_string().chars().count());
+            writeln!(f, "    {}{}{}", good, spaces, self.count_units(&good))?;
         }
         Ok(())
     }

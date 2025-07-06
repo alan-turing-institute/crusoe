@@ -90,7 +90,7 @@ mod tests {
         // assert_eq!(serialized, "max_time = 100\ndaily_nutrition = 3\n");
 
         let deserialized: Config = toml::from_str(&serialized).unwrap();
-        // assert_eq!(deserialized, config);
+        assert_eq!(deserialized, config);
     }
 
     #[test]

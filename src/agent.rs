@@ -18,6 +18,10 @@ pub trait Agent {
 
     fn get_name(&self) -> &str;
 
+    fn print_state(&self) {
+        print!("{}", self.stock());
+    }
+
     /// The stock of goods currently held by the agent.
     fn stock(&self) -> &Stock;
 
@@ -67,7 +71,9 @@ pub trait Agent {
         }
         // Update stock
         for (good, qty) in stock_change {
-            self.stock_mut().remove(&good, qty);
+            self.stock_mut()
+                .remove(&good, qty)
+                .expect("Good known to exist.");
         }
         // Returns false if the agent dies from lack of nutrients
         if outstanding_nutritional_units > 0 {
